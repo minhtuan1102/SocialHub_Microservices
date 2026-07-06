@@ -1,8 +1,8 @@
-# API Gateway — Dockerfile
-# Replace with your actual setup.
-# See .ai/prompts/create-dockerfile.md for templates (Node.js, Python, Go, Nginx).
-#
-# Requirements: expose port 8000, route to backend services.
+# Sử dụng base image của Keycloak
+FROM quay.io/keycloak/keycloak:24.0.1
 
-# TODO: Replace with your actual Dockerfile.
-FROM scratch
+# Copy toàn bộ file cấu hình JSON bạn vừa xuất vào thư mục import của Keycloak
+COPY ./export/ /opt/keycloak/data/import/
+
+# Khi container khởi chạy, nó sẽ tự động import các file JSON này vào Database
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev", "--import-realm"]
