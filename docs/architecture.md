@@ -115,16 +115,28 @@ Các service gọi nhau qua internal REST API (không qua Gateway):
 ### 4.1 System Context (C4 Level 1)
 
 ```mermaid
-C4Context
-    title System Context — SocialHub
+flowchart LR
 
-    Person(user, "User", "Đăng ký, kết bạn, đăng bài, nhắn tin, xem thông báo")
-    Person(admin, "Admin", "Quản lý hệ thống, moderate nội dung")
+    user([👤 User])
+    admin([🛠️ Admin])
 
-    System(system, "SocialHub", "Nền tảng mạng xã hội — kết bạn, đăng bài, nhắn tin realtime, nhóm chat")
+    subgraph SocialHub["🌐 SocialHub"]
+        system["Social Networking Platform
 
-    Rel(user, system, "Uses", "HTTPS + WebSocket")
-    Rel(admin, system, "Manages", "HTTPS")
+• Authentication
+• User Profile
+• Friend Management
+• Posts & Feed
+• Realtime Chat
+• Notifications"]
+    end
+
+    user -->|HTTPS / WebSocket| system
+    admin -->|HTTPS| system
+
+    style system fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px
+    style user fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    style admin fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px
 ```
 
 > SocialHub không tích hợp hệ thống bên ngoài (payment, email) ở phiên bản này. Tất cả components đều self-hosted.
@@ -132,51 +144,105 @@ C4Context
 ### 4.2 Container Diagram (C4 Level 2) — Full Deployment View
 
 ```mermaid
-C4Container
-    title Container Diagram — SocialHub
+flowchart TB
 
-    Person(user, "User")
+%% =========================
+%% Client
+%% =========================
 
-    Container_Boundary(sys, "SocialHub") {
-        Container(fe, "Frontend", "React + Vite", "SPA — UI cho toàn bộ tính năng. Port 3000")
-        Container(gw, "API Gateway", "Node.js / Express", "Routing, JWT validation, rate limiting. Port 8080")
+User([👤 User])
 
-        Container(us, "user-service", "Node.js / Express", "Auth, Profile, User search. Port 5001")
-        Container(fs, "friend-service", "Node.js / Express", "Friend requests, Friendship management. Port 5002")
-        Container(ps, "post-service", "Node.js / Express", "Posts, Feed, Like, Comment, Share. Port 5003")
-        Container(cs, "chat-service", "Node.js / Express + Socket.IO", "Messaging 1-1, Group chat, Realtime. Port 5004")
-        Container(ms, "media-service", "Node.js / Express + MinIO SDK", "Upload, Presigned URL generation. Port 5005")
-        Container(ns, "notification-service", "Node.js / Express + Socket.IO", "Event consumer, Push notifications. Port 5006")
+subgraph Client
+    FE["Frontend
+React + Vite"]
+end
 
-        ContainerDb(pg, "PostgreSQL", "PostgreSQL 16", "Users, Profiles, Friendships, Posts, Comments, Likes. Port 5432")
-        ContainerDb(mongo, "MongoDB", "MongoDB 7", "Messages, Conversations, Groups, Notifications. Port 27017")
-        ContainerDb(redis, "Redis", "Redis 7", "Cache, Pub/Sub, JWT blacklist, Online presence. Port 6379")
-        ContainerDb(minio, "MinIO", "MinIO S3", "Object storage — images, media. Port 9000")
-    }
+%% =========================
+%% Backend
+%% =========================
 
-    Rel(user, fe, "Uses", "HTTPS")
-    Rel(fe, gw, "API calls", "HTTP/REST + WebSocket")
-    Rel(gw, us, "Routes to", "HTTP/REST")
-    Rel(gw, fs, "Routes to", "HTTP/REST")
-    Rel(gw, ps, "Routes to", "HTTP/REST")
-    Rel(gw, cs, "Routes to", "HTTP/REST + WebSocket")
-    Rel(gw, ms, "Routes to", "HTTP/REST")
-    Rel(gw, ns, "Routes to", "HTTP/REST + WebSocket")
+subgraph Backend["SocialHub Backend"]
 
-    Rel(us, pg, "Reads/Writes", "TCP")
-    Rel(fs, pg, "Reads/Writes", "TCP")
-    Rel(ps, pg, "Reads/Writes", "TCP")
-    Rel(cs, mongo, "Reads/Writes", "TCP")
-    Rel(ns, mongo, "Reads/Writes", "TCP")
-    Rel(ms, minio, "Stores/Retrieves files", "S3 API")
+    GW["API Gateway"]
 
-    Rel(us, redis, "Cache + Blacklist", "TCP")
-    Rel(fs, redis, "Publish events + Cache", "TCP")
-    Rel(ps, redis, "Publish events + Feed cache", "TCP")
-    Rel(cs, redis, "Socket.IO adapter + Publish", "TCP")
-    Rel(ns, redis, "Subscribe events", "TCP")
+    US["User Service"]
+    FS["Friend Service"]
+    PS["Post Service"]
 
-    Rel(user, minio, "Download media", "Presigned URL")
+    CS["Chat Service"]
+
+    MS["Media Service"]
+
+    NS["Notification Service"]
+
+end
+
+%% =========================
+%% Data Layer
+%% =========================
+
+subgraph Storage
+
+    PG[(PostgreSQL)]
+
+    MDB[(MongoDB)]
+
+    REDIS[(Redis)]
+
+    MINIO[(MinIO)]
+
+end
+
+%% =========================
+%% Flow
+%% =========================
+
+User --> FE
+
+FE -->|REST / WS| GW
+
+GW --> US
+GW --> FS
+GW --> PS
+GW --> CS
+GW --> MS
+GW --> NS
+
+US --> PG
+FS --> PG
+PS --> PG
+
+CS --> MDB
+NS --> MDB
+
+US --> REDIS
+FS --> REDIS
+PS --> REDIS
+CS --> REDIS
+NS --> REDIS
+
+MS --> MINIO
+
+User -. Presigned URL .-> MINIO
+
+%% =========================
+%% Style
+%% =========================
+
+style FE fill:#BBDEFB
+style GW fill:#90CAF9
+
+style US fill:#C8E6C9
+style FS fill:#C8E6C9
+style PS fill:#C8E6C9
+style CS fill:#C8E6C9
+style MS fill:#C8E6C9
+style NS fill:#C8E6C9
+
+style PG fill:#FFE082
+style MDB fill:#FFE082
+style REDIS fill:#FFE082
+style MINIO fill:#FFE082
 ```
 
 ### 4.3 Detailed Architecture Diagram
