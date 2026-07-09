@@ -40,5 +40,14 @@ const mapToPostService = (req, res) => {
 router.use('/posts', protectRoute, mapToPostService);
 router.use('/feed', protectRoute, mapToPostService);
 
+// --- chat-service routes ---
+const mapToChatService = (req, res) => {
+  const targetPath = req.originalUrl.replace(/^\/api/, '');
+  return httpClientService.forwardToChatService(req, res, targetPath);
+};
+
+// Map /conversations and /groups to chat-service
+router.use('/conversations', protectRoute, mapToChatService);
+router.use('/groups', protectRoute, mapToChatService);
 
 export default router;

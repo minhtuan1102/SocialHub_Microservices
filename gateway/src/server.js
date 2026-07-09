@@ -1,6 +1,17 @@
 import app from './app.js';
 import { config } from './config/index.js';
 import redis from './config/redis.js';
+import httpProxy from 'http-proxy';
+
+// Create a WebSocket proxy server targeting the chat-service URL
+const wsProxy = httpProxy.createProxyServer({
+  target: config.CHAT_SERVICE_URL,
+  ws: true
+});
+
+wsProxy.on('error', (err) => {
+  console.error('❌ Gateway WS Proxy Error:', err.message);
+});
 
 const startServer = async () => {
   try {
@@ -15,6 +26,16 @@ const startServer = async () => {
       console.log(`🔗 Routing user-service requests to: ${config.USER_SERVICE_URL}`);
       console.log(`🔗 Routing media-service requests to: ${config.MEDIA_SERVICE_URL}`);
       console.log(`🔗 Routing post-service requests to: ${config.POST_SERVICE_URL}`);
+      console.log(`🔗 Routing chat-service requests to: ${config.CHAT_SERVICE_URL}`);
+    });
+
+    // Proxy incoming WebSocket/Socket.IO connections to chat-service
+    server.on('upgrade', (req, socket, head) => {
+      if (req.url && req.url.startsWith('/socket.io')) {
+        wsProxy.ws(req, socket, head);
+      } else {
+        socket.destroy();
+      }
     });
 
     // Graceful Shutdown
