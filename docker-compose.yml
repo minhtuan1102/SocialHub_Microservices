@@ -296,8 +296,11 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-socialhub}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-socialhub_secret}
     networks:
       - app-network
     healthcheck:
