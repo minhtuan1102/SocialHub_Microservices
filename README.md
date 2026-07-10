@@ -56,13 +56,16 @@ cd services/friend-service && npm install && npm run dev
 cd services/post-service && npm install && npm run dev
 
 # 4. Khởi chạy media-service
-cd services/media-service && npm install && node src/server.js
+cd services/media-service && npm install && npm run dev
 
 # 5. Khởi chạy notification-service
 cd services/notification-service && npm install && npm run dev
 
 # 6. Khởi chạy API Gateway
 cd gateway && npm install && npm run dev
+
+# 7. Khởi chạy Frontend
+cd frontend && npm install && npm run dev
 ```
 
 ---

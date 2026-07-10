@@ -64,10 +64,9 @@ export const AuthProvider = ({ children }) => {
     // Hàm xử lý Đăng ký
     const register = async (email, password, displayName) => {
         try {
-            const res = await api.post("/auth/register", { email, password, displayName });
+            const res = await api.post("/auth/register", { email, password, name: displayName });
             if (res.data && res.data.success) {
-
-                const { accessToken, refreshToken } = res.data.tokens;
+                const { accessToken, refreshToken } = res.data.token || res.data.tokens || {};
                 localStorage.setItem("accessToken", accessToken);
                 localStorage.setItem("refreshToken", refreshToken);
                 setUser(res.data.user);
