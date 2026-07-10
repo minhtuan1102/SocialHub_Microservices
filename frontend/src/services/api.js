@@ -1,9 +1,14 @@
 import axios from "axios";
 
+const getBaseURL = () => {
+    return import.meta.env.vite_api_url || "http://localhost:8080/api";
+};
+
 const api = axios.create({
-    baseURL: "http://localhost:8080/api",
+    baseURL: getBaseURL(),
     headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "any-value"
     }
 })
 
@@ -34,8 +39,12 @@ api.interceptors.response.use(
                 if (!refreshToken) throw new Error("No refresh token available");
 
                 // Gọi API refresh token
-                const res = await axios.post("http://localhost:8080/api/auth/refresh", {
+                const res = await axios.post(`${getBaseURL()}/auth/refresh`, {
                     refreshToken,
+                }, {
+                    headers: {
+                        "ngrok-skip-browser-warning": "any-value"
+                    }
                 });
                 if (res.data && res.data.success) {
                     const { accessToken: newAccess, refreshToken: newRefresh } = res.data.tokens;
@@ -60,3 +69,4 @@ api.interceptors.response.use(
     }
 );
 export default api;
+
