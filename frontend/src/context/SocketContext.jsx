@@ -54,7 +54,8 @@ export const SocketProvider = ({ children }) => {
         // 2. Khởi tạo Notification Socket (qua đường dẫn /notification/socket.io/)
         const notifSock = io(socketBaseURL, {
             auth: { token },
-            path: "/notification/socket.io/"
+            path: "/notification/socket.io/",
+            transports: ["websocket"]
         });
 
         notifSock.on("connect", () => {
@@ -86,7 +87,8 @@ export const SocketProvider = ({ children }) => {
         // 3. Khởi tạo Chat Socket (qua đường dẫn /chat/socket.io/)
         const chSock = io(socketBaseURL, {
             auth: { token },
-            path: "/chat/socket.io/"
+            path: "/chat/socket.io/",
+            transports: ["websocket"]
         });
 
         chSock.on("connect", () => {
