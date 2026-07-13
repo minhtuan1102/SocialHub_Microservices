@@ -14,6 +14,8 @@ export default (io, socket) => {
       const { conversationId, content, type = 'text', mediaId } = payload;
       const userId = socket.userId;
 
+      console.log(`📡 [SOCKET] Event message:send from user=${userId} (${socket.displayName}) in conversation=${conversationId}, type=${type}, content="${content ? content.substring(0, 50) : ''}"`);
+
       if (!conversationId) {
         return socket.emit('error', { message: 'conversationId is required' });
       }
@@ -94,6 +96,8 @@ export default (io, socket) => {
       const { conversationId, messageId } = payload;
       const userId = socket.userId;
 
+      console.log(`📡 [SOCKET] Event message:read from user=${userId} in conversation=${conversationId}, messageId=${messageId}`);
+
       if (!conversationId || !messageId) {
         return socket.emit('error', { message: 'conversationId and messageId are required' });
       }
@@ -137,6 +141,6 @@ export default (io, socket) => {
     if (!conversationId) return;
     const roomId = `conv:${conversationId}`;
     socket.join(roomId);
-    console.log(`🔌 Socket ${socket.id} (User: ${socket.userId}) joined conversation room: ${roomId}`);
+    console.log(`🔌 [SOCKET] Join Room: id=${socket.id}, user=${socket.userId} joined conversation room: ${roomId}`);
   });
 };

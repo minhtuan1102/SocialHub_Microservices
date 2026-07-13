@@ -47,8 +47,12 @@ export const SocketProvider = ({ children }) => {
 
         const token = localStorage.getItem("accessToken");
 
+        // Xác định socketBaseURL động dựa trên api.defaults.baseURL (bỏ đuôi /api nếu có)
+        const apiBase = api.defaults.baseURL || "http://localhost:8080/api";
+        const socketBaseURL = apiBase.endsWith("/api") ? apiBase.slice(0, -4) : apiBase;
+
         // 2. Khởi tạo Notification Socket (qua đường dẫn /notification/socket.io/)
-        const notifSock = io("http://localhost:8080", {
+        const notifSock = io(socketBaseURL, {
             auth: { token },
             path: "/notification/socket.io/"
         });
@@ -80,7 +84,7 @@ export const SocketProvider = ({ children }) => {
         setNotificationSocket(notifSock);
 
         // 3. Khởi tạo Chat Socket (qua đường dẫn /chat/socket.io/)
-        const chSock = io("http://localhost:8080", {
+        const chSock = io(socketBaseURL, {
             auth: { token },
             path: "/chat/socket.io/"
         });
