@@ -63,26 +63,25 @@ const Layout = () => {
                                 </span>
                             )}
                         </Link>
-                        <Link to={`/profile/${user?.id}`} className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-white/5 transition group">
-                            <User className="w-5 h-5 text-slate-400 group-hover:text-violet-400" />
-                            <span>Trang cá nhân</span>
-                        </Link>
                     </nav>
                 </div>
 
                 {/* Phần thông tin user đăng nhập ở đáy Sidebar */}
                 <div className="pt-6 border-t border-white/10 space-y-4">
-                    <div className="flex items-center space-x-3">
+                    <Link
+                        to={`/profile/${user?.id}`}
+                        className="flex items-center space-x-3 cursor-pointer group hover:bg-white/5 p-2 rounded-xl transition"
+                    >
                         <img
                             src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
                             alt="Avatar"
-                            className="w-10 h-10 rounded-full border border-white/20"
+                            className="w-10 h-10 rounded-full border border-white/20 object-cover"
                         />
                         <div className="truncate">
-                            <p className="font-semibold text-sm text-white">{user?.displayName}</p>
+                            <p className="font-semibold text-sm text-white group-hover:text-violet-400 transition">{user?.displayName}</p>
                             <p className="text-xs text-slate-400 truncate">{user?.email}</p>
                         </div>
-                    </div>
+                    </Link>
 
                     <button
                         onClick={handleLogout}

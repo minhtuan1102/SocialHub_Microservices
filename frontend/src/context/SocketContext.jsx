@@ -61,7 +61,7 @@ export const SocketProvider = ({ children }) => {
             setUnreadCount(data.unreadCount);
         });
 
-        notifSock.on("notification:received", (notification) => {
+        notifSock.on("notification:new", (notification) => {
             console.log("📡 Nhận thông báo realtime:", notification);
             setToast({
                 id: notification.id,
