@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom"; // <-- Import thêm Link
 import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
@@ -10,7 +11,7 @@ const ChatWidget = () => {
     const { onlineUsers, chatSocket } = useSocket();
     const [friends, setFriends] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    
+
     // Quản lý các ô chat đang được mở nổi dưới đáy màn hình (Mở tối đa 3 ô thoại cùng lúc)
     const [openChats, setOpenChats] = useState([]);
 
@@ -90,21 +91,28 @@ const ChatWidget = () => {
                             return (
                                 <div
                                     key={friend.id}
-                                    onClick={() => handleOpenChat(friend)}
-                                    className="flex items-center space-x-3 p-2 rounded-xl hover:bg-white/5 transition cursor-pointer group"
+                                    className="flex items-center space-x-3 p-2 rounded-xl hover:bg-white/5 transition group"
                                 >
-                                    <div className="relative">
+                                    {/* Nhấp ảnh đại diện -> Đi tới trang cá nhân */}
+                                    <Link
+                                        to={`/profile/${friend.id}`}
+                                        className="relative cursor-pointer hover:opacity-85 transition block"
+                                    >
                                         <img
                                             src={friend.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
                                             className="w-9 h-9 rounded-full object-cover border border-white/10"
                                             alt="Avatar"
                                         />
                                         {/* Chấm tròn báo trạng thái online/offline */}
-                                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${
-                                            isOnline ? "bg-emerald-500" : "bg-slate-500"
-                                        }`} />
-                                    </div>
-                                    <div className="truncate flex-1">
+                                        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${isOnline ? "bg-emerald-500" : "bg-slate-500"
+                                            }`} />
+                                    </Link>
+
+                                    {/* Nhấp tên -> Bật ô chat thoại */}
+                                    <div
+                                        onClick={() => handleOpenChat(friend)}
+                                        className="truncate flex-1 cursor-pointer"
+                                    >
                                         <p className="text-xs font-semibold text-slate-300 group-hover:text-white truncate transition">
                                             {friend.displayName}
                                         </p>

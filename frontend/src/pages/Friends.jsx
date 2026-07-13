@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { Users, UserPlus, UserCheck, UserMinus, Search, Loader, Sparkles } from "lucide-react";
@@ -248,13 +249,13 @@ const Friends = () => {
                             const relation = searchStatuses[u.id] || { status: "none" };
                             return (
                                 <div key={u.id} className="flex items-center justify-between p-4 bg-slate-900/40 border border-white/5 rounded-xl">
-                                    <div className="flex items-center space-x-3">
-                                        <img src={u.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-10 h-10 rounded-full" alt="Avatar" />
+                                    <Link to={`/profile/${u.id}`} className="flex items-center space-x-3 group cursor-pointer">
+                                        <img src={u.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-10 h-10 rounded-full border border-white/10 group-hover:opacity-80 transition object-cover" alt="Avatar" />
                                         <div>
-                                            <p className="font-semibold text-white text-sm">{u.displayName}</p>
+                                            <p className="font-semibold text-white text-sm group-hover:text-violet-400 transition">{u.displayName}</p>
                                             <p className="text-xs text-slate-400">{u.email}</p>
                                         </div>
-                                    </div>
+                                    </Link>
 
                                     {/* Các nút hành động tương ứng với trạng thái kết bạn */}
                                     {relation.status === "friends" && (
@@ -326,13 +327,13 @@ const Friends = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
                                 {requests.map(r => (
                                     <div key={r.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center justify-between">
-                                        <div className="flex items-center space-x-3">
-                                            <img src={r.user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-12 h-12 rounded-full border border-white/10" alt="Avatar" />
+                                        <Link to={`/profile/${r.fromUserId}`} className="flex items-center space-x-3 group cursor-pointer">
+                                            <img src={r.user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-12 h-12 rounded-full border border-white/10 group-hover:opacity-80 transition object-cover" alt="Avatar" />
                                             <div>
-                                                <p className="font-bold text-white">{r.user?.displayName}</p>
+                                                <p className="font-bold text-white group-hover:text-violet-400 transition">{r.user?.displayName}</p>
                                                 <p className="text-xs text-slate-400">Gửi lúc: {new Date(r.createdAt).toLocaleDateString()}</p>
                                             </div>
-                                        </div>
+                                        </Link>
                                         <div className="flex space-x-2">
                                             <button
                                                 onClick={() => handleAccept(r.id, r.fromUserId)}
@@ -361,9 +362,11 @@ const Friends = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn">
                                 {friends.map(f => (
                                     <div key={f.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
-                                        <img src={f.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-16 h-16 rounded-full border-2 border-violet-500/20" alt="Avatar" />
+                                        <Link to={`/profile/${f.id}`} className="group block cursor-pointer">
+                                            <img src={f.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-16 h-16 rounded-full border-2 border-violet-500/20 group-hover:opacity-80 transition object-cover" alt="Avatar" />
+                                        </Link>
                                         <div>
-                                            <p className="font-bold text-white text-sm truncate max-w-[150px]">{f.displayName}</p>
+                                            <Link to={`/profile/${f.id}`} className="font-bold text-white text-sm hover:text-violet-400 transition block truncate max-w-[150px]">{f.displayName}</Link>
                                             <p className="text-[11px] text-slate-400 truncate max-w-[150px]">{f.email}</p>
                                         </div>
                                         <button
@@ -387,13 +390,13 @@ const Friends = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
                                 {suggestions.map(s => (
                                     <div key={s.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center justify-between">
-                                        <div className="flex items-center space-x-3">
-                                            <img src={s.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-12 h-12 rounded-full border border-white/10" alt="Avatar" />
+                                        <Link to={`/profile/${s.id}`} className="flex items-center space-x-3 group cursor-pointer">
+                                            <img src={s.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} className="w-12 h-12 rounded-full border border-white/10 group-hover:opacity-80 transition object-cover" alt="Avatar" />
                                             <div>
-                                                <p className="font-bold text-white">{s.displayName}</p>
+                                                <p className="font-bold text-white group-hover:text-violet-400 transition">{s.displayName}</p>
                                                 <p className="text-xs text-violet-400 font-medium">{s.mutualFriendCount} bạn chung</p>
                                             </div>
-                                        </div>
+                                        </Link>
                                         <button
                                             onClick={() => handleSendRequest(s.id)}
                                             className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-xl text-xs font-semibold cursor-pointer transition"
