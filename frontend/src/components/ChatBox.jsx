@@ -29,8 +29,8 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
             try {
                 const res = await api.get(`/conversations/${conversationId}/messages?limit=40`);
                 if (res.data && res.data.success) {
-                    // Cấu trúc trả về là res.data.data chứa danh sách tin nhắn
-                    setMessages(res.data.data || []);
+                    // Cấu trúc trả về là res.data.data.data chứa danh sách tin nhắn
+                    setMessages(res.data.data.data || []);
                 }
             } catch (error) {
                 console.error("❌ Lỗi lấy tin nhắn lịch sử:", error.message);
