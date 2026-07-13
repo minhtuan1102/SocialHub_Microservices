@@ -59,6 +59,16 @@ const startServer = async () => {
           });
 
           proxyReq.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
+            // Handle socket errors to prevent app crashes on client/service disconnects (like ECONNRESET)
+            socket.on('error', (err) => {
+              console.error('[ERROR] WS Client socket error:', err.message);
+              proxySocket.destroy();
+            });
+            proxySocket.on('error', (err) => {
+              console.error('[ERROR] WS Proxy socket error:', err.message);
+              socket.destroy();
+            });
+
             socket.write('HTTP/1.1 101 Switching Protocols\r\n');
             Object.keys(proxyRes.headers).forEach((key) => {
               socket.write(`${key}: ${proxyRes.headers[key]}\r\n`);
