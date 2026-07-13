@@ -38,6 +38,7 @@ export const initSocketServer = (server) => {
   io.use(socketAuthMiddleware);
 
   io.on('connection', async (socket) => {
+    console.log(`🔌 [SOCKET] Connection established: id=${socket.id}, user=${socket.userId}, name=${socket.displayName}`);
     try {
       // 1. Handle user coming online, join rooms, broadcast presence
       await handleUserOnline(io, socket);
@@ -49,6 +50,7 @@ export const initSocketServer = (server) => {
 
       // 3. Handle user disconnection
       socket.on('disconnect', async () => {
+        console.log(`🔌 [SOCKET] Disconnected: id=${socket.id}, user=${socket.userId}`);
         await handleUserOffline(io, socket);
       });
     } catch (err) {

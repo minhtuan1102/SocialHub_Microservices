@@ -5,6 +5,7 @@ export default (io, socket) => {
   // Client starts typing
   socket.on('typing:start', ({ conversationId }) => {
     if (!conversationId) return;
+    console.log(`📡 [SOCKET] Event typing:start from user=${socket.userId} in conversation=${conversationId}`);
 
     socket.to(`conv:${conversationId}`).emit('typing:indicator', {
       conversationId,
@@ -17,6 +18,7 @@ export default (io, socket) => {
   // Client stops typing
   socket.on('typing:stop', ({ conversationId }) => {
     if (!conversationId) return;
+    console.log(`📡 [SOCKET] Event typing:stop from user=${socket.userId} in conversation=${conversationId}`);
 
     socket.to(`conv:${conversationId}`).emit('typing:indicator', {
       conversationId,
