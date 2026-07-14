@@ -129,19 +129,36 @@ gcloud iam service-accounts add-iam-policy-binding socialhub-github-sa@socialhub
     --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUM}/locations/global/workloadIdentityPools/socialhub-wif-pool/attribute.repository/YOUR_GITHUB_USERNAME/SocialHub_Microservices"
 ```
 
-### 5. Cấu hình lại File Workflow
-Mở file [.github/workflows/gke-deploy.yml](file:///d:/Hoc_tap_Project_complete/SocialHub_Microservices/.github/workflows/gke-deploy.yml):
-1.  Tìm khóa `WIF_PROVIDER` ở đầu file và thay thế `YOUR_PROJECT_NUMBER` bằng Project Number thực tế của bạn.
-2.  Đảm bảo trường `WIF_SERVICE_ACCOUNT` trỏ đúng tới địa chỉ email Service Account: `socialhub-github-sa@socialhub-micro-service-1.iam.gserviceaccount.com`.
+### 5. Cấu hình GitHub Variables
+Để bảo mật, bạn không cần sửa trực tiếp tệp workflow YAML. Thay vào đó, hãy cấu hình các biến trực tiếp trên GitHub:
 
-### 6. Cách kích hoạt chạy thử nghiệm (Test)
+1. Vào Repository của bạn trên GitHub -> **Settings** -> **Secrets and variables** -> **Actions**.
+2. Chọn tab **Variables** (ở bên cạnh Secrets) -> click **New repository variable** và thêm lần lượt các biến sau:
+   *   `GCP_PROJECT_ID`: `socialhub-micro-service-1`
+   *   `GCP_REGION`: `asia-east1`
+   *   `GAR_REPOSITORY`: `socialhub-repo`
+   *   `GKE_CLUSTER`: `socialhub-gke-cluster`
+   *   `WIF_PROVIDER`: Điền giá trị đầy đủ (ví dụ: `projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/socialhub-wif-pool/providers/socialhub-github-provider`, thay `PROJECT_NUMBER` bằng số dự án của bạn).
+   *   `WIF_SERVICE_ACCOUNT`: `socialhub-github-sa@socialhub-micro-service-1.iam.gserviceaccount.com`
+
+### 6. Cách kích hoạt chạy thử nghiệm & Xác minh
 Bạn chỉ cần thực hiện commit code và push trực tiếp lên branch `main`:
 ```bash
 git add .
-git commit -m "feat: setup GitHub Actions CI/CD with GKE Spot VMs"
+git commit -m "feat: setup GitHub Actions CI/CD with GKE Spot VMs and RabbitMQ"
 git push origin main
 ```
-Sau đó truy cập tab **Actions** trên Repository GitHub của bạn để xem quá trình build matrix (7 máy ảo GitHub chạy song song để build Docker) và deploy tự động lên cụm GKE.
+Sau đó, truy cập tab **Actions** trên GitHub để theo dõi 7 máy ảo GitHub chạy song song (matrix build) để build Docker và tự động deploy lên cụm GKE.
+
+**Kiểm tra RabbitMQ và các dịch vụ trong cụm GKE:**
+Sau khi deploy thành công, hãy kiểm tra xem RabbitMQ đã chạy ổn định chưa để đảm bảo các dịch vụ realtime không bị lỗi kết nối:
+```bash
+# Kiểm tra các Pod xem rabbitmq đã chạy thành công chưa
+kubectl get pods -n default
+
+# Xem log kết nối của notification-service để chắc chắn đã kết nối thành công tới rabbitmq
+kubectl logs deployment/notification-service -n default
+```
 
 ### 7. Lệnh dọn dẹp (Xóa cấu hình WIF & Service Account)
 Khi kết thúc dự án và muốn xóa bỏ các kết nối bảo mật này:

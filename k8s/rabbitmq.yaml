@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  labels:
+    app: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      # --- Cấu hình chạy trên Spot VM để tối ưu chi phí ---
+      nodeSelector:
+        cloud.google.com/gke-spot: "true"
+      tolerations:
+      - key: "cloud.google.com/gke-spot"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management-alpine
+        ports:
+        - containerPort: 5672
+          name: amqp
+        - containerPort: 15672
+          name: management
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "384Mi"
+          limits:
+            cpu: "400m"
+            memory: "512Mi"
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: "socialhub"
+        - name: RABBITMQ_DEFAULT_PASS
+          value: "socialhub_secret"
+        - name: RABBITMQ_SERVER_MEMORY_AVAILABLE_LIMIT
+          value: "256MB"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+spec:
+  ports:
+  - port: 5672
+    targetPort: 5672
+    name: amqp
+  - port: 15672
+    targetPort: 15672
+    name: management
+  selector:
+    app: rabbitmq

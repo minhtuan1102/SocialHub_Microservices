@@ -11,14 +11,14 @@ permissions:
   id-token: write
 
 env:
-  PROJECT_ID: socialhub-micro-service-1
-  GAR_LOCATION: asia-east1
-  GAR_REPOSITORY: socialhub-repo
-  GKE_CLUSTER: socialhub-gke-cluster
-  GKE_REGION: asia-east1
-  # Thay thế bằng WIF Provider và Service Account đã tạo ở Cách 2
-  WIF_PROVIDER: projects/YOUR_PROJECT_NUMBER/locations/global/workloadIdentityPools/socialhub-wif-pool/providers/socialhub-github-provider
-  WIF_SERVICE_ACCOUNT: socialhub-github-sa@socialhub-micro-service-1.iam.gserviceaccount.com
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'socialhub-micro-service-1' }}
+  GAR_LOCATION: ${{ vars.GCP_REGION || 'asia-east1' }}
+  GAR_REPOSITORY: ${{ vars.GAR_REPOSITORY || 'socialhub-repo' }}
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER || 'socialhub-gke-cluster' }}
+  GKE_REGION: ${{ vars.GCP_REGION || 'asia-east1' }}
+  # Đăng nhập bảo mật sử dụng GitHub Variables được cấu hình ở Cài đặt Repo
+  WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+  WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
