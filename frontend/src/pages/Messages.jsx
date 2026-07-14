@@ -6,63 +6,77 @@ import {
     MessageSquare,
     Send,
     Image as ImageIcon,
+    Video,
     Users,
     X,
     Loader,
     MessageSquarePlus,
-    Circle,
-    ChevronRight
+    Circle
 } from "lucide-react";
 
-// Component con tải ảnh an toàn bằng blob đính kèm JWT Token
-const ChatImage = ({ mediaId }) => {
-    const [imageUrl, setImageUrl] = useState("");
+// Component con tải Ảnh & Video an toàn bằng blob đính kèm JWT Token (Không có viền lót tím)
+const ChatMedia = ({ mediaId }) => {
+    const [mediaData, setMediaData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         let isMounted = true;
-        const fetchImage = async () => {
+        const fetchMedia = async () => {
             try {
                 const response = await api.get(`/media/file/${mediaId}`, {
                     responseType: "blob"
                 });
                 if (isMounted) {
                     const objectUrl = URL.createObjectURL(response.data);
-                    setImageUrl(objectUrl);
+                    const type = response.data.type || "";
+                    setMediaData({
+                        url: objectUrl,
+                        isVideo: type.startsWith("video/")
+                    });
                 }
             } catch (err) {
-                console.error("❌ Lỗi tải ảnh đính kèm chat:", err);
+                console.error("❌ Lỗi tải media đính kèm chat:", err);
             } finally {
                 if (isMounted) setIsLoading(false);
             }
         };
 
-        fetchImage();
+        fetchMedia();
 
         return () => {
             isMounted = false;
-            if (imageUrl) URL.revokeObjectURL(imageUrl);
+            if (mediaData?.url) URL.revokeObjectURL(mediaData.url);
         };
     }, [mediaId]);
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center p-4 bg-slate-900/50 rounded-lg">
+            <div className="flex items-center justify-center p-4 bg-slate-100 rounded-xl min-w-[120px]">
                 <Loader className="w-4 h-4 text-violet-500 animate-spin" />
             </div>
         );
     }
 
-    if (!imageUrl) {
-        return <p className="text-[10px] text-red-400 italic">Không tải được ảnh</p>;
+    if (!mediaData) {
+        return <p className="text-[10px] text-red-400 italic p-2">Không tải được media</p>;
+    }
+
+    if (mediaData.isVideo) {
+        return (
+            <video
+                src={mediaData.url}
+                controls
+                className="rounded-xl max-h-72 max-w-full object-cover shadow-sm bg-black"
+            />
+        );
     }
 
     return (
         <img
-            src={imageUrl}
+            src={mediaData.url}
             alt="Attached"
-            className="rounded-lg max-h-60 max-w-full object-contain cursor-pointer hover:opacity-95 transition"
-            onClick={() => window.open(imageUrl, "_blank")}
+            className="rounded-xl max-h-72 max-w-full object-contain cursor-pointer hover:opacity-95 transition shadow-sm"
+            onClick={() => window.open(mediaData.url, "_blank")}
         />
     );
 };
@@ -85,9 +99,8 @@ const Messages = () => {
     const [friends, setFriends] = useState([]);
     const [selectedFriends, setSelectedFriends] = useState([]);
     
-    // Image attachment
-    const [imageFile, setImageFile] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
+    // Multi-file media attachments
+    const [selectedFiles, setSelectedFiles] = useState([]); // [{ id, file, previewUrl, isVideo }]
     const [isSending, setIsSending] = useState(false);
     
     const messagesEndRef = useRef(null);
@@ -98,230 +111,208 @@ const Messages = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // 1. Tải danh sách hội thoại
-    const fetchConversationsList = async () => {
+    // 1. Tải danh sách cuộc hội thoại của User
+    const fetchConversations = async () => {
         setIsLoadingConvs(true);
         try {
-            const res = await api.get("/conversations?limit=50");
+            const res = await api.get("/conversations");
             if (res.data && res.data.success) {
                 setConversations(res.data.data || []);
             }
         } catch (err) {
-            console.error("❌ Lỗi lấy danh sách hội thoại:", err);
+            console.error("❌ Lỗi lấy danh sách hội thoại:", err.message);
         } finally {
             setIsLoadingConvs(false);
         }
     };
 
     useEffect(() => {
-        if (currentUser) {
-            fetchConversationsList();
-        }
-    }, [currentUser]);
+        fetchConversations();
+    }, []);
 
-    // 2. Tải danh sách bạn bè cho Modal Tạo nhóm
+    // 2. Lắng nghe sự kiện nhắn tin Realtime qua Socket.IO Chat Namespace
     useEffect(() => {
-        const fetchFriends = async () => {
-            try {
-                const res = await api.get("/friends");
-                if (res.data && res.data.success) {
-                    setFriends(res.data.data || []);
-                }
-            } catch (err) {
-                console.error("❌ Lỗi tải bạn bè:", err);
-            }
-        };
-        if (showGroupModal) {
-            fetchFriends();
-        }
-    }, [showGroupModal]);
+        if (!chatSocket) return;
 
-    // 3. Tải tin nhắn khi chọn hội thoại
+        const handleNewMessage = (msg) => {
+            if (selectedConv) {
+                const cId = selectedConv._id || selectedConv.id;
+                if (msg.conversationId === cId) {
+                    setMessages((prev) => [...prev, msg]);
+                }
+            }
+            fetchConversations();
+        };
+
+        chatSocket.on("message:new", handleNewMessage);
+        return () => {
+            chatSocket.off("message:new", handleNewMessage);
+        };
+    }, [chatSocket, selectedConv]);
+
+    // 3. Khi chọn 1 cuộc hội thoại -> Tải danh sách tin nhắn
     useEffect(() => {
         if (!selectedConv) return;
-        
-        const convId = selectedConv._id || selectedConv.id;
+        const cId = selectedConv._id || selectedConv.id;
+
         const fetchMessages = async () => {
             setIsLoadingMsgs(true);
             try {
-                const res = await api.get(`/conversations/${convId}/messages?limit=50`);
+                const res = await api.get(`/conversations/${cId}/messages`);
                 if (res.data && res.data.success) {
-                    setMessages(res.data.data?.data ? [...res.data.data.data].reverse() : []);
+                    setMessages(res.data.data || []);
                 }
             } catch (err) {
-                console.error("❌ Lỗi lấy tin nhắn:", err);
+                console.error("❌ Lỗi tải lịch sử tin nhắn:", err.message);
             } finally {
                 setIsLoadingMsgs(false);
             }
         };
 
         fetchMessages();
+    }, [selectedConv]);
 
-        // Join room websocket
-        if (chatSocket) {
-            chatSocket.emit("conversation:join", { conversationId: convId });
+    // Xử lý chọn nhiều File (Ảnh & Video)
+    const handleFilesChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        const newItems = files.map((file) => ({
+            id: Math.random().toString(36).substring(2, 9),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            isVideo: file.type.startsWith("video/")
+        }));
+
+        setSelectedFiles((prev) => [...prev, ...newItems]);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const handleRemoveFile = (idToRemove) => {
+        setSelectedFiles((prev) => {
+            const item = prev.find((f) => f.id === idToRemove);
+            if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+            return prev.filter((f) => f.id !== idToRemove);
+        });
+    };
+
+    // 4. Gửi tin nhắn (Văn bản và/hoặc nhiều Ảnh/Video)
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!selectedConv) return;
+        if (!inputText.trim() && selectedFiles.length === 0) return;
+
+        const cId = selectedConv._id || selectedConv.id;
+        setIsSending(true);
+
+        try {
+            let uploadedMediaIds = [];
+
+            // Bước A: Upload tất cả file media đính kèm nếu có
+            if (selectedFiles.length > 0) {
+                const uploadPromises = selectedFiles.map(async (item) => {
+                    const formData = new FormData();
+                    formData.append("file", item.file);
+                    const res = await api.post("/media/upload", formData, {
+                        headers: { "Content-Type": "multipart/form-data" }
+                    });
+                    return res.data?.id;
+                });
+                const resIds = await Promise.all(uploadPromises);
+                uploadedMediaIds = resIds.filter(Boolean);
+            }
+
+            // Gửi từng media kèm theo hoặc tin nhắn tổng thể
+            if (uploadedMediaIds.length > 0) {
+                for (let i = 0; i < uploadedMediaIds.length; i++) {
+                    const mId = uploadedMediaIds[i];
+                    const isLast = i === uploadedMediaIds.length - 1;
+                    const contentText = isLast && inputText.trim() ? inputText.trim() : "Sent an image";
+
+                    await api.post(`/conversations/${cId}/messages`, {
+                        content: contentText,
+                        type: "image",
+                        mediaId: mId
+                    });
+                }
+            } else if (inputText.trim()) {
+                await api.post(`/conversations/${cId}/messages`, {
+                    content: inputText.trim(),
+                    type: "text"
+                });
+            }
+
+            // Reset form
+            setInputText("");
+            selectedFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+            setSelectedFiles([]);
+
+            // Refetch messages & conversations
+            const res = await api.get(`/conversations/${cId}/messages`);
+            if (res.data && res.data.success) {
+                setMessages(res.data.data || []);
+            }
+            fetchConversations();
+        } catch (err) {
+            console.error("❌ Lỗi gửi tin nhắn:", err.message);
+            alert("Không thể gửi tin nhắn. Vui lòng thử lại!");
+        } finally {
+            setIsSending(false);
         }
+    };
 
-        // Đánh dấu đã đọc hội thoại này
-        const markAsRead = async () => {
-            try {
-                await api.post(`/conversations/${convId}/read`);
-                // Cập nhật lại unread count ở sidebar cục bộ
-                setConversations(prev => prev.map(c => {
-                    const cId = c._id || c.id;
-                    if (cId === convId) {
-                        return { ...c, unreadCount: 0 };
-                    }
-                    return c;
-                }));
-            } catch (err) {
-                // Silently fail
+    // 5. Tải danh sách bạn bè để chọn làm nhóm
+    const handleOpenGroupModal = async () => {
+        setShowGroupModal(true);
+        try {
+            const res = await api.get("/friends");
+            if (res.data && res.data.success) {
+                setFriends(res.data.data || []);
             }
-        };
-        markAsRead();
+        } catch (err) {
+            console.error("❌ Lỗi lấy danh sách bạn bè:", err.message);
+        }
+    };
 
-    }, [selectedConv, chatSocket]);
-
-    // 4. Lắng nghe tin nhắn mới từ Socket
-    useEffect(() => {
-        if (!chatSocket) return;
-
-        const handleIncomingMsg = (message) => {
-            const currentSelectedId = selectedConv?._id || selectedConv?.id;
-            
-            // Nếu tin nhắn thuộc hội thoại đang mở
-            if (String(message.conversationId) === String(currentSelectedId)) {
-                setMessages(prev => [...prev, message]);
-                // Đọc tin nhắn luôn
-                chatSocket.emit("message:read", { conversationId: currentSelectedId, messageId: message.id || message._id });
-            }
-
-            // Đồng thời cập nhật danh sách hội thoại ngoài sidebar
-            setConversations(prev => {
-                return prev.map(c => {
-                    const cId = c._id || c.id;
-                    if (String(cId) === String(message.conversationId)) {
-                        return {
-                            ...c,
-                            lastMessage: message,
-                            unreadCount: String(cId) === String(currentSelectedId) ? 0 : (c.unreadCount || 0) + 1,
-                            updatedAt: new Date().toISOString()
-                        };
-                    }
-                    return c;
-                }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            });
-        };
-
-        chatSocket.on("message:received", handleIncomingMsg);
-        return () => {
-            chatSocket.off("message:received", handleIncomingMsg);
-        };
-    }, [chatSocket, selectedConv]);
-
-    // 5. Thêm/Xóa thành viên khỏi nhóm chat
-    const handleToggleFriend = (id) => {
-        setSelectedFriends(prev => 
-            prev.includes(id) ? prev.filter(fId => fId !== id) : [...prev, id]
+    const toggleSelectFriend = (friendId) => {
+        setSelectedFriends((prev) =>
+            prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId]
         );
     };
 
-    // 6. Gửi tạo nhóm chat mới
+    // 6. Tạo nhóm chat mới
     const handleCreateGroup = async (e) => {
         e.preventDefault();
-        if (!groupName.trim() || selectedFriends.length === 0) return;
+        if (!groupName.trim() || selectedFriends.length === 0) {
+            alert("Vui lòng nhập tên nhóm và chọn ít nhất 1 thành viên!");
+            return;
+        }
 
         try {
             const res = await api.post("/groups", {
                 name: groupName.trim(),
                 memberIds: selectedFriends
             });
+
             if (res.data && res.data.success) {
-                const newGroup = res.data.data;
-                
-                // Reset form
+                setShowGroupModal(false);
                 setGroupName("");
                 setSelectedFriends([]);
-                setShowGroupModal(false);
-
-                // Tải lại danh sách hội thoại và chọn nhóm mới
-                const convRes = await api.get(`/conversations/${newGroup.conversationId}`);
-                if (convRes.data && convRes.data.success) {
-                    const newConversation = convRes.data.data;
-                    setConversations(prev => [newConversation, ...prev]);
-                    setSelectedConv(newConversation);
-                }
+                fetchConversations();
             }
         } catch (err) {
-            console.error("❌ Lỗi tạo nhóm chat:", err);
-            alert("Tạo nhóm chat thất bại!");
+            console.error("❌ Lỗi tạo nhóm chat:", err.message);
+            alert("Không thể tạo nhóm chat!");
         }
     };
 
-    // 7. Gửi tin nhắn
-    const handleSendMessage = async (e) => {
-        e.preventDefault();
-        const convId = selectedConv?._id || selectedConv?.id;
-        if (!convId || (!inputText.trim() && !imageFile) || !chatSocket) return;
-
-        setIsSending(true);
-        let mediaId = null;
-
-        try {
-            // Tải ảnh lên trước
-            if (imageFile) {
-                const formData = new FormData();
-                formData.append("file", imageFile);
-                const uploadRes = await api.post("/media/upload", formData, {
-                    headers: {
-                        "Content-Type": "multipart/form-data"
-                    }
-                });
-                if (uploadRes.data && uploadRes.data.id) {
-                    mediaId = uploadRes.data.id;
-                }
-            }
-
-            // Gửi qua socket
-            chatSocket.emit("message:send", {
-                conversationId: convId,
-                content: inputText.trim(),
-                type: mediaId ? "image" : "text",
-                mediaId
-            });
-
-            setInputText("");
-            handleRemoveImage();
-        } catch (err) {
-            console.error("❌ Lỗi gửi tin nhắn:", err);
-            alert("Gửi tin nhắn thất bại!");
-        } finally {
-            setIsSending(false);
-        }
-    };
-
-    // Xử lý đính kèm ảnh
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleRemoveImage = () => {
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImageFile(null);
-        setImagePreview(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
-
-    // Phân giải tiêu đề và avatar hội thoại
+    // Helper trích xuất thông tin đối phương từ conversation
     const getConvInfo = (conv) => {
         const isGroup = conv.type === "group";
         const cId = conv._id || conv.id;
-        const other = conv.participants?.find(p => p.userId !== currentUser.id) || {
-            displayName: "Người dùng",
+
+        const other = conv.participants?.find((p) => p.userId !== currentUser?.id) || {
+            displayName: "Người dùng SocialHub",
             avatarUrl: null,
             userId: ""
         };
@@ -336,49 +327,45 @@ const Messages = () => {
     };
 
     return (
-        <div className="flex-1 flex bg-white rounded-3xl border border-slate-200 overflow-hidden h-[calc(100vh-120px)] mt-4 ml-6 mr-6 shadow-sm">
-            
+        <div className="flex bg-white rounded-2xl border border-slate-200 overflow-hidden h-[calc(100vh-4rem)] shadow-sm w-full">
             {/* Cột trái: Danh sách hội thoại */}
-            <div className="w-80 border-r border-slate-200 flex flex-col bg-slate-50">
-                
+            <div className="w-80 border-r border-slate-200 flex flex-col bg-slate-50 shrink-0">
                 {/* Header */}
-                <div className="p-5 border-b border-slate-200 flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+                    <h2 className="text-base font-bold text-slate-800 flex items-center space-x-2">
                         <MessageSquare className="w-5 h-5 text-violet-600" />
                         <span>Hội thoại</span>
                     </h2>
                     <button
-                        onClick={() => setShowGroupModal(true)}
+                        onClick={handleOpenGroupModal}
                         title="Tạo nhóm mới"
-                        className="p-2 bg-white hover:bg-slate-100 text-slate-650 hover:text-violet-600 border border-slate-200 rounded-xl transition cursor-pointer shadow-sm"
+                        className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-650 hover:text-violet-600 border border-slate-200 rounded-xl transition cursor-pointer shadow-sm"
                     >
-                        <MessageSquarePlus className="w-5 h-5" />
+                        <MessageSquarePlus className="w-4 h-4" />
                     </button>
                 </div>
 
-                {/* Danh sách */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+                {/* Danh sách các cuộc hội thoại */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
                     {isLoadingConvs ? (
                         <div className="flex justify-center items-center h-full">
                             <Loader className="w-6 h-6 text-violet-500 animate-spin" />
                         </div>
                     ) : conversations.length > 0 ? (
-                        conversations.map(conv => {
+                        conversations.map((conv) => {
                             const cId = conv._id || conv.id;
                             const isSelected = selectedConv && (selectedConv._id === cId || selectedConv.id === cId);
                             const { title, avatar, isOnline } = getConvInfo(conv);
-                            
+
                             return (
                                 <div
                                     key={cId}
                                     onClick={() => setSelectedConv(conv)}
-                                    className={`flex items-center space-x-3.5 p-3 rounded-2xl cursor-pointer transition group ${
-                                        isSelected
-                                            ? "bg-violet-50 border border-violet-200"
-                                            : "hover:bg-slate-100 border border-transparent"
+                                    className={`flex items-center space-x-3 p-3 rounded-xl cursor-pointer transition group ${
+                                        isSelected ? "bg-violet-50 border border-violet-200" : "hover:bg-slate-100"
                                     }`}
                                 >
-                                    <div className="relative flex-shrink-0">
+                                    <div className="relative shrink-0">
                                         <img
                                             src={avatar}
                                             className="w-10 h-10 rounded-full border border-slate-200 object-cover"
@@ -388,7 +375,7 @@ const Messages = () => {
                                             <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white animate-pulse" />
                                         )}
                                     </div>
-                                    
+
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
                                             <h4 className="text-xs font-bold text-slate-800 truncate group-hover:text-violet-600 transition">
@@ -401,7 +388,7 @@ const Messages = () => {
                                             )}
                                         </div>
                                         <p className="text-[10px] text-slate-500 mt-1 truncate">
-                                            {conv.lastMessage?.content || (conv.lastMessage?.type === "image" ? "Đã gửi một ảnh" : "Chưa có tin nhắn...")}
+                                            {conv.lastMessage?.content || (conv.lastMessage?.type === "image" ? "Đã gửi tệp media" : "Chưa có tin nhắn...")}
                                         </p>
                                     </div>
                                 </div>
@@ -413,30 +400,31 @@ const Messages = () => {
                 </div>
             </div>
 
-            {/* Cột phải: Chi tiết hội thoại */}
+            {/* Cột phải: Khung nội dung hội thoại */}
             <div className="flex-1 flex flex-col min-w-0 bg-white">
                 {selectedConv ? (
                     <>
                         {/* Header Chat */}
                         {(() => {
-                            const { title, avatar, isOnline, other } = getConvInfo(selectedConv);
+                            const { title, avatar, isOnline } = getConvInfo(selectedConv);
                             const isGroup = selectedConv.type === "group";
-                            
+
                             return (
-                                <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-                                    <div className="flex items-center space-x-3.5">
+                                <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
+                                    <div className="flex items-center space-x-3">
                                         <img
                                             src={avatar}
                                             className="w-10 h-10 rounded-full border border-slate-200 object-cover"
                                             alt="Avatar"
                                         />
                                         <div>
-                                            <h3 className="text-xs font-bold text-slate-850">{title}</h3>
+                                            <h3 className="text-xs font-bold text-slate-800">{title}</h3>
                                             <p className="text-[10px] text-slate-500 mt-0.5">
                                                 {isGroup
                                                     ? `${selectedConv.participants?.length || 0} thành viên`
-                                                    : (isOnline ? "Đang hoạt động" : "Ngoại tuyến")
-                                                }
+                                                    : isOnline
+                                                    ? "Đang hoạt động"
+                                                    : "Ngoại tuyến"}
                                             </p>
                                         </div>
                                     </div>
@@ -444,8 +432,8 @@ const Messages = () => {
                             );
                         })()}
 
-                        {/* Vùng nội dung tin nhắn */}
-                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/40">
+                        {/* Vùng nội dung danh sách tin nhắn */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
                             {isLoadingMsgs ? (
                                 <div className="flex justify-center items-center h-full">
                                     <Loader className="w-7 h-7 text-violet-500 animate-spin" />
@@ -454,11 +442,14 @@ const Messages = () => {
                                 messages.map((msg, index) => {
                                     const isMe = msg.senderId === currentUser.id;
                                     const isGroup = selectedConv.type === "group";
-                                    const sender = selectedConv.participants?.find(p => p.userId === msg.senderId) || {
+                                    const sender = selectedConv.participants?.find((p) => p.userId === msg.senderId) || {
                                         displayName: "Thành viên",
                                         avatarUrl: null
                                     };
-                                    const msgTime = new Date(msg.createdAt || msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    const msgTime = new Date(msg.createdAt || msg.created_at).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                    });
 
                                     return (
                                         <div key={msg.id || msg._id || index} className={`flex flex-col ${isMe ? "items-end" : "items-start"} space-y-1`}>
@@ -467,34 +458,41 @@ const Messages = () => {
                                                     {sender.displayName}
                                                 </span>
                                             )}
-                                            
-                                            <div className={`flex items-end space-x-2.5 ${isMe ? "justify-end" : "justify-start"} max-w-[70%]`}>
+
+                                            <div className={`flex items-end space-x-2 ${isMe ? "justify-end" : "justify-start"} max-w-[80%]`}>
                                                 {!isMe && (
                                                     <img
                                                         src={sender.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${msg.senderId}`}
-                                                        className="w-7.5 h-7.5 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                                                        className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0"
                                                         alt="Sender Avatar"
                                                     />
                                                 )}
-                                                
-                                                <div className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
-                                                    isMe
-                                                        ? "bg-violet-600 text-white rounded-br-none"
-                                                        : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200"
-                                                }`}>
-                                                    {msg.type === "image" && msg.mediaId ? (
-                                                        <div className="space-y-2">
-                                                            <ChatImage mediaId={msg.mediaId} />
-                                                            {msg.content && msg.content !== "Sent an image" && (
-                                                                <p className="mt-1 text-slate-800">{msg.content}</p>
-                                                            )}
+
+                                                {/* Hiển thị Media đính kèm (Hình ảnh / Video) độc lập - Không bị lót viền màu tím */}
+                                                {msg.type === "image" && msg.mediaId ? (
+                                                    <div className="flex flex-col space-y-1 items-end">
+                                                        <div className="overflow-hidden rounded-2xl border border-slate-200/80 shadow-sm bg-black/5">
+                                                            <ChatMedia mediaId={msg.mediaId} />
                                                         </div>
-                                                    ) : (
-                                                        msg.content
-                                                    )}
-                                                </div>
+                                                        {msg.content && msg.content !== "Sent an image" && (
+                                                            <div className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
+                                                                isMe ? "bg-violet-600 text-white rounded-br-none" : "bg-white text-slate-800 rounded-bl-none border border-slate-200"
+                                                            }`}>
+                                                                {msg.content}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className={`px-4 py-2.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
+                                                        isMe
+                                                            ? "bg-violet-600 text-white rounded-br-none"
+                                                            : "bg-white text-slate-800 rounded-bl-none border border-slate-200"
+                                                    }`}>
+                                                        {msg.content}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span className={`text-[8px] text-slate-400 select-none ${isMe ? "mr-1" : "ml-10"}`}>
+                                            <span className={`text-[8px] text-slate-400 select-none ${isMe ? "mr-1" : "ml-9"}`}>
                                                 {msgTime}
                                             </span>
                                         </div>
@@ -509,36 +507,44 @@ const Messages = () => {
                         </div>
 
                         {/* Ô nhập tin nhắn */}
-                        <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-200 bg-slate-50/50 space-y-3">
-                            
-                            {/* Khung ảnh xem trước */}
-                            {imagePreview && (
-                                <div className="relative rounded-2xl overflow-hidden border border-slate-200 max-h-24 max-w-[160px] flex items-center bg-slate-100 p-1">
-                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-contain max-h-24 rounded-xl" />
-                                    <button
-                                        type="button"
-                                        onClick={handleRemoveImage}
-                                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/85 text-white rounded-full transition cursor-pointer"
-                                    >
-                                        <X className="w-3.5 h-3.5" />
-                                    </button>
+                        <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-200 bg-white space-y-3 shrink-0">
+                            {/* Khung xem trước nhiều file đính kèm */}
+                            {selectedFiles.length > 0 && (
+                                <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+                                    {selectedFiles.map((item) => (
+                                        <div key={item.id} className="relative rounded-xl overflow-hidden border border-slate-200 w-20 h-20 shrink-0 bg-slate-100 flex items-center justify-center">
+                                            {item.isVideo ? (
+                                                <video src={item.previewUrl} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveFile(item.id)}
+                                                className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black/85 text-white rounded-full transition cursor-pointer"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
-                            {/* Dòng điều khiển */}
-                            <div className="flex items-center space-x-3.5">
+                            {/* Khung thanh công cụ và ô gõ nội dung */}
+                            <div className="flex items-center space-x-2">
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-650 hover:text-violet-600 rounded-xl transition cursor-pointer flex-shrink-0"
+                                    className="p-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-violet-600 rounded-xl transition cursor-pointer shrink-0"
                                 >
                                     <ImageIcon className="w-4 h-4" />
                                 </button>
                                 <input
                                     type="file"
+                                    multiple
                                     ref={fileInputRef}
-                                    onChange={handleImageChange}
-                                    accept="image/*"
+                                    onChange={handleFilesChange}
+                                    accept="image/*,video/*"
                                     className="hidden"
                                 />
 
@@ -547,13 +553,13 @@ const Messages = () => {
                                     value={inputText}
                                     onChange={(e) => setInputText(e.target.value)}
                                     placeholder="Nhập tin nhắn..."
-                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-600 transition"
+                                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-600 transition"
                                 />
-                                
+
                                 <button
                                     type="submit"
-                                    disabled={isSending || (!inputText.trim() && !imageFile)}
-                                    className="p-2.5 bg-violet-600 disabled:opacity-50 hover:bg-violet-700 text-white rounded-xl transition cursor-pointer flex-shrink-0"
+                                    disabled={isSending || (!inputText.trim() && selectedFiles.length === 0)}
+                                    className="p-2.5 bg-violet-600 disabled:opacity-50 hover:bg-violet-700 text-white rounded-xl transition cursor-pointer shrink-0 shadow-md shadow-violet-600/20"
                                 >
                                     {isSending ? (
                                         <Loader className="w-4 h-4 animate-spin" />
@@ -577,12 +583,12 @@ const Messages = () => {
                 )}
             </div>
 
-            {/* Modal Tạo nhóm từ trung tâm tin nhắn */}
+            {/* Modal Tạo nhóm */}
             {showGroupModal && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn">
                         <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
-                            <h3 className="font-bold text-slate-850 text-sm">Tạo nhóm chat mới</h3>
+                            <h3 className="font-bold text-slate-800 text-sm">Tạo nhóm chat mới</h3>
                             <button
                                 onClick={() => {
                                     setShowGroupModal(false);
@@ -600,56 +606,49 @@ const Messages = () => {
                                 <label className="block text-[10px] text-slate-500 font-semibold uppercase mb-1">Tên nhóm</label>
                                 <input
                                     type="text"
-                                    required
                                     value={groupName}
                                     onChange={(e) => setGroupName(e.target.value)}
-                                    placeholder="Nhập tên nhóm..."
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-600 transition"
+                                    placeholder="Ví dụ: Nhóm Học Tập..."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-violet-600 transition"
                                 />
                             </div>
-                            
+
                             <div>
-                                <label className="block text-[10px] text-slate-500 font-semibold uppercase mb-1.5">
-                                    Chọn thành viên ({selectedFriends.length})
-                                </label>
-                                {friends.length > 0 ? (
-                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                        {friends.map(friend => (
-                                            <div
-                                                key={friend.id}
-                                                onClick={() => handleToggleFriend(friend.id)}
-                                                className={`flex items-center justify-between p-2 rounded-xl border transition cursor-pointer ${
-                                                    selectedFriends.includes(friend.id)
-                                                        ? "bg-violet-50 border border-violet-200"
-                                                        : "bg-slate-50 border-transparent hover:bg-slate-100"
-                                                }`}
-                                            >
-                                                <div className="flex items-center space-x-2.5">
-                                                    <img
-                                                        src={friend.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
-                                                        className="w-7 h-7 rounded-full object-cover border border-slate-200"
-                                                        alt="Avatar"
-                                                    />
-                                                    <span className="text-xs text-slate-700 font-medium">{friend.displayName}</span>
+                                <label className="block text-[10px] text-slate-500 font-semibold uppercase mb-2">Chọn thành viên</label>
+                                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                                    {friends.length > 0 ? (
+                                        friends.map((f) => {
+                                            const isSelected = selectedFriends.includes(f.id);
+                                            return (
+                                                <div
+                                                    key={f.id}
+                                                    onClick={() => toggleSelectFriend(f.id)}
+                                                    className={`flex items-center justify-between p-2 rounded-xl cursor-pointer border transition ${
+                                                        isSelected ? "bg-violet-50 border-violet-300" : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center space-x-2.5">
+                                                        <img
+                                                            src={f.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
+                                                            className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                                                            alt="Avatar"
+                                                        />
+                                                        <span className="text-xs font-medium text-slate-800">{f.displayName}</span>
+                                                    </div>
+                                                    <Circle className={`w-4 h-4 ${isSelected ? "fill-violet-600 text-violet-600" : "text-slate-300"}`} />
                                                 </div>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedFriends.includes(friend.id)}
-                                                    readOnly
-                                                    className="w-3.5 h-3.5 accent-violet-600 rounded border-slate-200 cursor-pointer"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-center text-slate-450 text-[10px] py-4">Không tìm thấy bạn bè nào.</p>
-                                )}
+                                            );
+                                        })
+                                    ) : (
+                                        <p className="text-[10px] text-slate-400 italic text-center py-4">Bạn chưa có người bạn nào để tạo nhóm.</p>
+                                    )}
+                                </div>
                             </div>
-                            
+
                             <button
                                 type="submit"
                                 disabled={!groupName.trim() || selectedFriends.length === 0}
-                                className="w-full bg-violet-600 disabled:opacity-50 hover:bg-violet-700 text-white font-semibold py-2 px-4 rounded-xl text-xs transition cursor-pointer shadow-md shadow-violet-500/10"
+                                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2.5 rounded-xl text-xs transition disabled:opacity-50 cursor-pointer shadow-md shadow-violet-600/20"
                             >
                                 Tạo nhóm
                             </button>

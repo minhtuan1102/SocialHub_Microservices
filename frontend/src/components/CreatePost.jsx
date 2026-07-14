@@ -1,71 +1,80 @@
 import { useState, useRef } from "react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { Image, Send, X, Loader } from "lucide-react";
+import { Image, Video, Send, X, Loader } from "lucide-react";
 
 const CreatePost = ({ onPostCreated }) => {
     const { user } = useAuth();
     const [content, setContent] = useState("");
-    const [imageFile, setImageFile] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
+    const [selectedFiles, setSelectedFiles] = useState([]); // [{ id, file, previewUrl, isVideo }]
     const [isUploading, setIsUploading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef(null);
 
-    // 1. Xử lý khi người dùng chọn file ảnh
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file)); // Tạo link xem trước tạm thời
-        }
-    };
+    // 1. Xử lý khi chọn nhiều file (Ảnh / Video)
+    const handleFilesChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
 
-    // 2. Xóa ảnh đã chọn
-    const handleRemoveImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
+        const newItems = files.map((file) => ({
+            id: Math.random().toString(36).substring(2, 9),
+            file,
+            previewUrl: URL.createObjectURL(file),
+            isVideo: file.type.startsWith("video/")
+        }));
+
+        setSelectedFiles((prev) => [...prev, ...newItems]);
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    // 3. Đăng bài viết
+    // 2. Xóa 1 file khỏi danh sách xem trước
+    const handleRemoveFile = (idToRemove) => {
+        setSelectedFiles((prev) => {
+            const item = prev.find((f) => f.id === idToRemove);
+            if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+            return prev.filter((f) => f.id !== idToRemove);
+        });
+    };
+
+    // 3. Đăng bài viết kèm nhiều Media
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!content.trim() && !imageFile) return;
+        if (!content.trim() && selectedFiles.length === 0) return;
 
         setIsSubmitting(true);
         let mediaIds = [];
 
         try {
-            // Bước A: Nếu có ảnh, upload lên media-service qua Gateway trước
-            if (imageFile) {
+            // Bước A: Upload tất cả các file đã chọn song song lên media-service
+            if (selectedFiles.length > 0) {
                 setIsUploading(true);
-                const formData = new FormData();
-                formData.append("file", imageFile);
-
-                const uploadRes = await api.post("/media/upload", formData, {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
+                const uploadPromises = selectedFiles.map(async (item) => {
+                    const formData = new FormData();
+                    formData.append("file", item.file);
+                    const res = await api.post("/media/upload", formData, {
+                        headers: { "Content-Type": "multipart/form-data" }
+                    });
+                    return res.data?.id;
                 });
 
-                if (uploadRes.data && uploadRes.data.id) {
-                    mediaIds.push(uploadRes.data.id);
-                }
+                const uploadedIds = await Promise.all(uploadPromises);
+                mediaIds = uploadedIds.filter(Boolean);
                 setIsUploading(false);
             }
 
-            // Bước B: Gửi bài viết kèm ID ảnh sang post-service qua Gateway
+            // Bước B: Đăng bài viết kèm mảng mediaIds
             const postRes = await api.post("/posts", {
                 content,
                 mediaIds,
-                visibility: "friends" // hoặc public
+                visibility: "friends"
             });
 
             if (postRes.data && postRes.data.success) {
                 setContent("");
-                handleRemoveImage();
-                if (onPostCreated) onPostCreated(postRes.data.data); // Refresh danh sách bài viết ở trang cha
+                // Clear previews
+                selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+                setSelectedFiles([]);
+                if (onPostCreated) onPostCreated(postRes.data.data);
             }
         } catch (error) {
             console.error("❌ Lỗi khi đăng bài:", error);
@@ -83,7 +92,7 @@ const CreatePost = ({ onPostCreated }) => {
                     <img
                         src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
                         alt="Avatar"
-                        className="w-10 h-10 rounded-full border border-slate-200"
+                        className="w-10 h-10 rounded-full border border-slate-200 object-cover"
                     />
                     <textarea
                         value={content}
@@ -93,43 +102,55 @@ const CreatePost = ({ onPostCreated }) => {
                     />
                 </div>
 
-                {/* Phần hiển thị ảnh xem trước (Preview) */}
-                {imagePreview && (
-                    <div className="relative rounded-xl overflow-hidden border border-slate-200 max-h-[300px]">
-                        <img src={imagePreview} alt="Preview" className="w-full object-cover max-h-[300px]" />
-                        <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-full text-white transition cursor-pointer"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                {/* Danh sách xem trước nhiều Ảnh / Video */}
+                {selectedFiles.length > 0 && (
+                    <div className={`grid gap-2 rounded-2xl overflow-hidden border border-slate-200 p-2 bg-slate-50 ${
+                        selectedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3"
+                    }`}>
+                        {selectedFiles.map((item) => (
+                            <div key={item.id} className="relative group rounded-xl overflow-hidden bg-black/5 aspect-video flex items-center justify-center">
+                                {item.isVideo ? (
+                                    <video src={item.previewUrl} className="w-full h-full object-cover" controls />
+                                ) : (
+                                    <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveFile(item.id)}
+                                    className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/85 rounded-full text-white transition cursor-pointer shadow-md"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-105">
-                    {/* Nút chọn ảnh ẩn */}
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                    {/* Nút chọn Ảnh & Video */}
                     <input
                         type="file"
-                        accept="image/*"
+                        multiple
+                        accept="image/*,video/*"
                         ref={fileInputRef}
-                        onChange={handleImageChange}
+                        onChange={handleFilesChange}
                         className="hidden"
                     />
                     <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isSubmitting}
-                        className="flex items-center space-x-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 border border-slate-200 transition cursor-pointer disabled:opacity-50 text-sm"
+                        className="flex items-center space-x-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-650 border border-slate-200 transition cursor-pointer disabled:opacity-50 text-sm font-medium"
                     >
                         <Image className="w-5 h-5 text-emerald-500" />
-                        <span>Hình ảnh</span>
+                        <Video className="w-5 h-5 text-violet-500" />
+                        <span>Ảnh / Video</span>
                     </button>
 
                     {/* Nút Đăng Bài */}
                     <button
                         type="submit"
-                        disabled={isSubmitting || (!content.trim() && !imageFile)}
+                        disabled={isSubmitting || (!content.trim() && selectedFiles.length === 0)}
                         className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 rounded-xl text-white font-semibold transition duration-200 transform active:scale-95 disabled:opacity-50 cursor-pointer text-sm shadow-md shadow-violet-500/10"
                     >
                         {isSubmitting ? (
@@ -137,7 +158,7 @@ const CreatePost = ({ onPostCreated }) => {
                         ) : (
                             <Send className="w-4 h-4" />
                         )}
-                        <span>{isSubmitting ? "Đang đăng..." : "Đăng bài"}</span>
+                        <span>{isSubmitting ? (isUploading ? "Đang tải media..." : "Đang đăng...") : "Đăng bài"}</span>
                     </button>
                 </div>
             </form>

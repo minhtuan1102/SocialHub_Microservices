@@ -124,37 +124,42 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
         return { parents, repliesByParent };
     };
 
-    // 1. Lấy Presigned URL cho ảnh đính kèm của bài viết
+    const [mediaItems, setMediaItems] = useState([]); // [{ id, url, isVideo }]
+    const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+
+    // 1. Tải tất cả Media (Ảnh & Video) đính kèm của bài viết
     useEffect(() => {
-        let localUrl = "";
-        const fetchImageUrl = async () => {
+        let createdObjectUrls = [];
+        const fetchAllMedia = async () => {
             if (post.media_ids && post.media_ids.length > 0) {
-                setIsLoadingImage(true);
+                setIsLoadingMedia(true);
                 try {
-                    const mediaId = post.media_ids[0];
-                    const res = await api.get(`/media/${mediaId}/url`);
-                    if (res.data && res.data.url) {
-                        const url = res.data.url;
-                        const fullUrl = url.startsWith("http") ? url : `${api.defaults.baseURL}${url}`;
-                        
-                        // Tải hình ảnh dưới dạng blob thông qua Axios để đính kèm header ngrok-skip-browser-warning
-                        const imgRes = await api.get(fullUrl, { responseType: "blob" });
-                        localUrl = URL.createObjectURL(imgRes.data);
-                        setImageUrl(localUrl);
-                    }
+                    const promises = post.media_ids.map(async (mId) => {
+                        try {
+                            const res = await api.get(`/media/file/${mId}`, { responseType: "blob" });
+                            const objUrl = URL.createObjectURL(res.data);
+                            createdObjectUrls.push(objUrl);
+                            const type = res.data.type || "";
+                            return { id: mId, url: objUrl, isVideo: type.startsWith("video/") };
+                        } catch (err) {
+                            return null;
+                        }
+                    });
+                    const results = await Promise.all(promises);
+                    setMediaItems(results.filter(Boolean));
                 } catch (error) {
-                    console.error("❌ Lỗi lấy link ảnh bài đăng:", error.message);
+                    console.error("❌ Lỗi lấy danh sách media:", error.message);
                 } finally {
-                    setIsLoadingImage(false);
+                    setIsLoadingMedia(false);
                 }
+            } else {
+                setMediaItems([]);
             }
         };
-        fetchImageUrl();
+        fetchAllMedia();
 
         return () => {
-            if (localUrl) {
-                URL.revokeObjectURL(localUrl);
-            }
+            createdObjectUrls.forEach((url) => URL.revokeObjectURL(url));
         };
     }, [post.media_ids]);
 
@@ -357,15 +362,30 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
             {/* Nội dung chữ */}
             <p className="text-slate-700 text-base mb-4 leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
-            {/* Ảnh đính kèm */}
-            {imageUrl && (
-                <div className="rounded-xl overflow-hidden border border-slate-200 mb-4 bg-slate-50 flex justify-center">
-                    <img src={imageUrl} alt="Post Attachment" className="w-full max-h-[450px] object-contain" />
+            {/* Khung hiển thị đa phương tiện (Ảnh & Video Grid) */}
+            {mediaItems.length > 0 && (
+                <div className={`grid gap-2 rounded-2xl overflow-hidden border border-slate-200 mb-4 bg-slate-50 ${
+                    mediaItems.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                }`}>
+                    {mediaItems.map((item) => (
+                        <div key={item.id} className="relative overflow-hidden flex items-center justify-center bg-black/5 rounded-xl">
+                            {item.isVideo ? (
+                                <video src={item.url} controls className="w-full max-h-[450px] object-cover rounded-xl" />
+                            ) : (
+                                <img
+                                    src={item.url}
+                                    alt="Post Attachment"
+                                    className="w-full max-h-[450px] object-cover hover:opacity-95 transition cursor-pointer"
+                                    onClick={() => window.open(item.url, "_blank")}
+                                />
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
-            {isLoadingImage && (
+            {isLoadingMedia && (
                 <div className="h-48 bg-slate-50 animate-pulse rounded-xl flex items-center justify-center text-slate-400 mb-4">
-                    Đang tải hình ảnh...
+                    Đang tải đa phương tiện...
                 </div>
             )}
 

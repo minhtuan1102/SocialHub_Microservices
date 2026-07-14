@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import ChatWidget from "./ChatWidget"; // <-- Import thêm ChatWidget
@@ -8,6 +8,9 @@ const Layout = () => {
     const { user, logout } = useAuth();
     const { unreadCount, toast, setToast } = useSocket();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const isMessagesPage = location.pathname === "/messages";
 
     const handleLogout = async () => {
         await logout();
@@ -119,9 +122,9 @@ const Layout = () => {
                 </div>
             </aside>
 
-            {/* Nội dung chính bên phải - Thêm mr-64 để tránh đè Sidebar phải */}
-            <main className="flex-1 ml-64 mr-64 p-8 min-h-screen">
-                <div className="max-w-4xl mx-auto">
+            {/* Nội dung chính bên phải */}
+            <main className={`flex-1 ml-64 mr-64 min-h-screen ${isMessagesPage ? "p-4" : "p-8"}`}>
+                <div className={isMessagesPage ? "w-full h-full" : "max-w-4xl mx-auto"}>
                     <Outlet /> {/* Nơi các trang con hiển thị */}
                 </div>
             </main>
