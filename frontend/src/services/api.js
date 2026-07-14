@@ -12,22 +12,11 @@ const api = axios.create({
     }
 })
 
-// 1. Request Interceptor: Tự động đính Access Token vào Header nếu có
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("accessToken");
         if (token) {
             config.headers["Authorization"] = `Bearer ${token}`;
-        }
-
-        // Tự động đính kèm query parameter để vượt qua preflight CORS của ngrok
-        const isNgrok = (config.baseURL && config.baseURL.includes("ngrok")) || 
-                        (config.url && config.url.includes("ngrok"));
-        if (isNgrok) {
-            config.params = {
-                ...config.params,
-                "ngrok-skip-browser-warning": "true"
-            };
         }
         return config;
     },
@@ -60,11 +49,6 @@ const resolveUrls = (obj) => {
                             const mediaId = val.split("/media/file/").pop();
                             resolvedUrl = `${api.defaults.baseURL}/media/file/${mediaId}`;
                         }
-                    }
-
-                    // Nếu URL phân giải sử dụng ngrok, đính kèm query parameter để bỏ qua trang cảnh báo của ngrok
-                    if (resolvedUrl && resolvedUrl.includes("ngrok")) {
-                        resolvedUrl += resolvedUrl.includes("?") ? "&ngrok-skip-browser-warning=true" : "?ngrok-skip-browser-warning=true";
                     }
 
                     // Thêm tham số thời gian để tránh trình duyệt cache ảnh đại diện
