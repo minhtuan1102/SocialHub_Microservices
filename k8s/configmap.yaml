@@ -31,6 +31,9 @@ data:
   # --- MongoDB Atlas Connection ---
   MONGO_URI: "mongodb+srv://socialhub:socialhub_secret@cluster.mongodb.net/socialhub?retryWrites=true&w=majority" # Thay thế bằng MongoDB Atlas URI của bạn
 
+  # --- RabbitMQ Configuration ---
+  RABBITMQ_URL: "amqp://socialhub:socialhub_secret@rabbitmq:5672"
+
   # --- Google Cloud Storage (S3 XML API Compatible) ---
   MINIO_ENDPOINT: "storage.googleapis.com"
   MINIO_PORT: "443"

@@ -48,7 +48,10 @@ spec:
               name: socialhub-config
               key: REDIS_URL
         - name: RABBITMQ_URL
-          value: "amqp://socialhub:socialhub_secret@rabbitmq:5672" # Thay thế nếu dùng RabbitMQ managed hoặc IP khác
+          valueFrom:
+            configMapKeyRef:
+              name: socialhub-config
+              key: RABBITMQ_URL
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
