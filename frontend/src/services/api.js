@@ -12,23 +12,15 @@ const api = axios.create({
     }
 })
 
-// 1. Request Interceptor: Tự động đính Access Token vào Header nếu có
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("accessToken");
         if (token) {
             config.headers["Authorization"] = `Bearer ${token}`;
         }
-
-        // Tự động đính kèm query parameter để vượt qua preflight CORS của ngrok
-        const isNgrok = (config.baseURL && config.baseURL.includes("ngrok")) || 
-                        (config.url && config.url.includes("ngrok"));
-        if (isNgrok) {
-            config.params = {
-                ...config.params,
-                "ngrok-skip-browser-warning": "true"
-            };
-        }
+        // Luôn đảm bảo header bypass ngrok warning tồn tại trong MỌI request
+        // (kể cả multipart/form-data vì headers object có thể bị override)
+        config.headers["ngrok-skip-browser-warning"] = "any-value";
         return config;
     },
     (error) => Promise.reject(error)
@@ -50,6 +42,11 @@ const resolveUrls = (obj) => {
             if (typeof val === "string") {
                 const lowerKey = key.toLowerCase();
                 if ((lowerKey === "avatarurl" || lowerKey === "avatar_url") && val) {
+                    // Bỏ qua blob URLs (ảnh local đã được tạo từ URL.createObjectURL)
+                    if (val.startsWith("blob:")) {
+                        continue;
+                    }
+
                     let resolvedUrl = val;
                     if (!val.startsWith("http")) {
                         const cleanVal = val.startsWith("/") ? val : `/${val}`;
@@ -62,13 +59,11 @@ const resolveUrls = (obj) => {
                         }
                     }
 
-                    // Nếu URL phân giải sử dụng ngrok, đính kèm query parameter để bỏ qua trang cảnh báo của ngrok
-                    if (resolvedUrl && resolvedUrl.includes("ngrok")) {
-                        resolvedUrl += resolvedUrl.includes("?") ? "&ngrok-skip-browser-warning=true" : "?ngrok-skip-browser-warning=true";
-                    }
-
                     // Thêm tham số thời gian để tránh trình duyệt cache ảnh đại diện
-                    resolvedUrl += (resolvedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+                    // (chỉ áp dụng cho URL server, không phải blob URL)
+                    if (!resolvedUrl.includes(`t=`)) {
+                        resolvedUrl += (resolvedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+                    }
 
                     console.log(`[AVATAR_RESOLVER] Key: "${key}", Original: "${val}", Resolved: "${resolvedUrl}"`);
 
