@@ -78,7 +78,10 @@ export const SocketProvider = ({ children }) => {
                 id: notification.id,
                 message: notification.message,
                 avatarUrl: notification.fromUser?.avatarUrl,
-                type: notification.type
+                type: notification.type,
+                referenceId: notification.referenceId,
+                referenceType: notification.referenceType,
+                fromUser: notification.fromUser
             });
 
             const timer = setTimeout(() => {

@@ -93,9 +93,20 @@ const Notifications = () => {
         if (notif.type === "friend_request") {
             navigate("/friends");
         } else if (notif.type === "friend_accepted") {
-            navigate(`/profile/${notif.fromUser?.id}`);
-        } else if (["post_liked", "post_commented", "post_shared"].includes(notif.type)) {
-            // Chuyển về trang chủ (hoặc trang chi tiết post nếu có)
+            if (notif.fromUser?.id) {
+                navigate(`/profile/${notif.fromUser.id}`);
+            } else {
+                navigate("/friends");
+            }
+        } else if (["post_liked", "post_commented", "post_shared"].includes(notif.type) || notif.referenceType === "post") {
+            if (notif.referenceId) {
+                navigate(`/post/${notif.referenceId}`);
+            } else {
+                navigate("/");
+            }
+        } else if (notif.type === "new_message") {
+            navigate("/messages");
+        } else {
             navigate("/");
         }
     };

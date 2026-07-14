@@ -6,7 +6,7 @@ import { Home, Users, User, LogOut, Radio, Bell, MessageSquare } from "lucide-re
 
 const Layout = () => {
     const { user, logout } = useAuth();
-    const { unreadCount, toast } = useSocket();
+    const { unreadCount, toast, setToast } = useSocket();
     const navigate = useNavigate();
 
     const handleLogout = async () => {
@@ -14,19 +14,41 @@ const Layout = () => {
         navigate("/login");
     };
 
+    const handleToastClick = (t) => {
+        setToast(null);
+        if (t.referenceType === "post" || ["post_liked", "post_commented", "post_shared"].includes(t.type)) {
+            if (t.referenceId) {
+                navigate(`/post/${t.referenceId}`);
+            } else {
+                navigate("/");
+            }
+        } else if (t.type === "friend_request") {
+            navigate("/friends");
+        } else if (t.type === "friend_accepted" && t.fromUser?.id) {
+            navigate(`/profile/${t.fromUser.id}`);
+        } else if (t.type === "new_message") {
+            navigate("/messages");
+        } else {
+            navigate("/notifications");
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-100 text-slate-900 flex">
             {/* Toast thông báo nổi thời gian thực */}
             {toast && (
-                <div className="fixed top-6 right-6 z-50 flex items-center space-x-3 bg-white/90 backdrop-blur-xl border border-slate-200/80 px-5 py-4 rounded-2xl shadow-xl animate-bounce-short max-w-sm pointer-events-none">
+                <div
+                    onClick={() => handleToastClick(toast)}
+                    className="fixed top-6 right-6 z-50 flex items-center space-x-3 bg-white/95 backdrop-blur-xl border border-slate-200/80 px-5 py-4 rounded-2xl shadow-xl animate-bounce-short max-w-sm cursor-pointer hover:bg-slate-50 transition"
+                >
                     <img
                         src={toast.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
-                        className="w-10 h-10 rounded-full border border-slate-200"
+                        className="w-10 h-10 rounded-full border border-slate-200 shrink-0"
                         alt="Avatar"
                     />
                     <div className="flex-1 min-w-0">
-                        <p className="text-slate-800 text-sm font-semibold">{toast.message}</p>
-                        <p className="text-slate-500 text-xs mt-0.5">Thông báo thời gian thực</p>
+                        <p className="text-slate-800 text-sm font-semibold truncate-2-lines">{toast.message}</p>
+                        <p className="text-violet-600 text-xs mt-0.5 font-medium">Bấm để xem chi tiết →</p>
                     </div>
                 </div>
             )}
