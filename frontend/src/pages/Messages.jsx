@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useSocket } from "../context/SocketContext";
+import {useState, useEffect, useRef} from "react";
+import {useNavigate} from "react-router-dom";
+import {useAuth} from "../context/AuthContext";
+import {useSocket} from "../context/SocketContext";
 import api from "../services/api";
 import ImageLightboxModal from "../components/ImageLightboxModal";
-import { compressImageBeforeUpload } from "../utils/imageCompressor";
+import {compressImageBeforeUpload} from "../utils/imageCompressor";
 import {
     MessageSquare,
     Send,
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 // Component con tải Ảnh & Video an toàn bằng blob đính kèm JWT Token (Không có viền lót tím)
-const ChatMedia = ({ mediaId, onLoad, onOpenLightbox }) => {
+const ChatMedia = ({mediaId, onLoad, onOpenLightbox}) => {
     const [mediaData, setMediaData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -97,8 +97,8 @@ const ChatMedia = ({ mediaId, onLoad, onOpenLightbox }) => {
 };
 
 // Component con quản lý thành viên nhóm chat
-const GroupMembersModal = ({ conversation, onClose, onGroupUpdated, friends }) => {
-    const { user: currentUser } = useAuth();
+const GroupMembersModal = ({conversation, onClose, onGroupUpdated, friends}) => {
+    const {user: currentUser} = useAuth();
     const [isAdding, setIsAdding] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
     const groupId = conversation.groupRef?._id || conversation.groupRef?.id;
@@ -116,7 +116,7 @@ const GroupMembersModal = ({ conversation, onClose, onGroupUpdated, friends }) =
         if (!groupId) return;
         setIsAdding(true);
         try {
-            const res = await api.post(`/groups/${groupId}/members`, { userId: friendId });
+            const res = await api.post(`/groups/${groupId}/members`, {userId: friendId});
             if (res.data && res.data.success) {
                 onGroupUpdated(res.data.data);
                 alert("Đã thêm thành viên thành công!");
@@ -241,7 +241,7 @@ const GroupMembersModal = ({ conversation, onClose, onGroupUpdated, friends }) =
 };
 
 // Component hiển thị tin nhắn chia sẻ bài viết đẹp mắt tương tự Facebook
-const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
+const RenderShareMessage = ({msgContent, isMe, onNavigate}) => {
     let data = null;
     try {
         data = JSON.parse(msgContent);
@@ -310,9 +310,9 @@ const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
 };
 
 const Messages = () => {
-    const { user: currentUser } = useAuth();
+    const {user: currentUser} = useAuth();
     const navigate = useNavigate();
-    const { onlineUsers, chatSocket } = useSocket();
+    const {onlineUsers, chatSocket} = useSocket();
 
     const [conversations, setConversations] = useState([]);
     const [selectedConv, setSelectedConv] = useState(null);
@@ -336,7 +336,7 @@ const Messages = () => {
 
     const handleOpenLightbox = async (mId) => {
         try {
-            const res = await api.get(`/media/file/${mId}?variant=original`, { responseType: "blob" });
+            const res = await api.get(`/media/file/${mId}?variant=original`, {responseType: "blob"});
             const objUrl = URL.createObjectURL(res.data);
             setActiveLightboxUrl(objUrl);
         } catch (err) {
@@ -355,7 +355,7 @@ const Messages = () => {
 
     // Scroll to bottom
     const scrollToBottom = (behavior = "smooth") => {
-        messagesEndRef.current?.scrollIntoView({ behavior });
+        messagesEndRef.current?.scrollIntoView({behavior});
     };
 
     // 1. Tải danh sách cuộc hội thoại của User
@@ -383,7 +383,7 @@ const Messages = () => {
 
         // Join room khi mở hội thoại và tự động re-join khi socket reconnect
         const joinRoom = () => {
-            chatSocket.emit("conversation:join", { conversationId: cId });
+            chatSocket.emit("conversation:join", {conversationId: cId});
             console.log(`📡 Đã kết nối & gửi yêu cầu join conversation room: ${cId}`);
         };
 
@@ -393,9 +393,9 @@ const Messages = () => {
         // Lắng nghe tin nhắn mới đúng cách: đăng ký listener ở cấp useEffect, không phải trong callback
         const handleNewMessage = (msg) => {
             if (String(msg.conversationId) === String(cId)) {
-                const newMsg = { ...msg, allowScroll: true };
+                const newMsg = {...msg, allowScroll: true};
                 setMessages((prev) => [...prev, newMsg]);
-                chatSocket.emit("message:read", { conversationId: cId, messageId: msg.id || msg._id });
+                chatSocket.emit("message:read", {conversationId: cId, messageId: msg.id || msg._id});
                 setTimeout(() => {
                     scrollToBottom("smooth");
                 }, 50);
@@ -409,7 +409,7 @@ const Messages = () => {
                 setConversations(prev => prev.map(c => {
                     const id = c._id || c.id;
                     if (String(id) === String(cId)) {
-                        return { ...c, unreadCount: 0 };
+                        return {...c, unreadCount: 0};
                     }
                     return c;
                 }));
@@ -438,7 +438,7 @@ const Messages = () => {
                 const res = await api.get(`/conversations/${cId}/messages?limit=10`);
                 if (res.data && res.data.success) {
                     const fetchedMsgs = res.data.data?.data ? [...res.data.data.data].reverse() : [];
-                    const enrichedMsgs = fetchedMsgs.map(msg => ({ ...msg, allowScroll: true }));
+                    const enrichedMsgs = fetchedMsgs.map(msg => ({...msg, allowScroll: true}));
                     setMessages(enrichedMsgs);
                     setHasMore(res.data.data?.hasMore || false);
                     setNextCursor(res.data.data?.nextCursor || null);
@@ -480,7 +480,7 @@ const Messages = () => {
             const res = await api.get(`/conversations/${cId}/messages?before=${nextCursor}&limit=10`);
             if (res.data && res.data.success) {
                 const oldMsgs = res.data.data?.data ? [...res.data.data.data].reverse() : [];
-                const enrichedOldMsgs = oldMsgs.map(msg => ({ ...msg, allowScroll: false }));
+                const enrichedOldMsgs = oldMsgs.map(msg => ({...msg, allowScroll: false}));
                 setMessages(prev => [...enrichedOldMsgs, ...prev]);
                 setHasMore(res.data.data?.hasMore || false);
                 setNextCursor(res.data.data?.nextCursor || null);
@@ -502,7 +502,7 @@ const Messages = () => {
 
     const handleScroll = () => {
         if (!chatContainerRef.current) return;
-        const { scrollTop } = chatContainerRef.current;
+        const {scrollTop} = chatContainerRef.current;
         // Nếu cuộn lên gần trên cùng
         if (scrollTop <= 5 && hasMore && !isLoadingMore && !isLoadingMsgs) {
             loadMoreMessages();
@@ -584,7 +584,7 @@ const Messages = () => {
                     const formData = new FormData();
                     formData.append("file", fileToUpload);
                     const res = await api.post("/media/upload", formData, {
-                        headers: { "Content-Type": "multipart/form-data" }
+                        headers: {"Content-Type": "multipart/form-data"}
                     });
                     return res.data?.id;
                 });
@@ -721,7 +721,7 @@ const Messages = () => {
             : other.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix";
         const isOnline = !isGroup && onlineUsers[other.userId] === true;
 
-        return { title, avatar, isOnline, other };
+        return {title, avatar, isOnline, other};
     };
 
     return (
@@ -753,7 +753,7 @@ const Messages = () => {
                         conversations.map((conv) => {
                             const cId = conv._id || conv.id;
                             const isSelected = selectedConv && (selectedConv._id === cId || selectedConv.id === cId);
-                            const { title, avatar, isOnline } = getConvInfo(conv);
+                            const {title, avatar, isOnline} = getConvInfo(conv);
 
                             return (
                                 <div
@@ -810,7 +810,7 @@ const Messages = () => {
                     <>
                         {/* Header Chat */}
                         {(() => {
-                            const { title, avatar, isOnline } = getConvInfo(selectedConv);
+                            const {title, avatar, isOnline} = getConvInfo(selectedConv);
                             const isGroup = selectedConv.type === "group";
 
                             return (
@@ -1100,7 +1100,7 @@ const Messages = () => {
                                     ...prev.groupRef,
                                     members: updatedGroup.members
                                 },
-                                participants: updatedGroup.members.map(m => ({ userId: m.userId, joinedAt: m.joinedAt }))
+                                participants: updatedGroup.members.map(m => ({userId: m.userId, joinedAt: m.joinedAt}))
                             };
                         });
                         // Cập nhật lại conversations list
@@ -1110,7 +1110,7 @@ const Messages = () => {
                             if (cId === targetId) {
                                 return {
                                     ...c,
-                                    participants: updatedGroup.members.map(m => ({ userId: m.userId, joinedAt: m.joinedAt }))
+                                    participants: updatedGroup.members.map(m => ({userId: m.userId, joinedAt: m.joinedAt}))
                                 };
                             }
                             return c;

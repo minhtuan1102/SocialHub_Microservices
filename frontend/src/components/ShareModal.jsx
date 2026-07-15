@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { X, Send, Loader, MessageSquare, Search, Check } from "lucide-react";
 
 const ShareModal = ({ post, onClose, onShareSuccess }) => {
+    const { user: currentUser } = useAuth();
     const { chatSocket } = useSocket();
     const [activeTab, setActiveTab] = useState("feed"); // "feed" | "chat"
     const [shareText, setShareText] = useState("");
@@ -91,8 +93,8 @@ const ShareModal = ({ post, onClose, onShareSuccess }) => {
         const isGroup = conv.type === "group";
         const cId = conv._id || conv.id;
         
-        // Lấy thông tin thành viên đối phương cho chat đơn
-        const other = conv.participants?.[0] || {
+        // Lấy thông tin thành viên đối phương cho chat đơn (Lọc người dùng hiện tại)
+        const other = conv.participants?.find(p => p.userId !== currentUser?.id) || conv.participants?.[0] || {
             displayName: "Người dùng SocialHub",
             avatarUrl: null
         };
