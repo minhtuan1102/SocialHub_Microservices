@@ -55,7 +55,7 @@ export default (io, socket) => {
 
       // Update Conversation's lastMessage for list previews
       conversation.lastMessage = {
-        content: type === 'image' ? 'Sent an image' : content.substring(0, 100),
+        content: type === 'image' ? 'Sent an image' : type === 'share' ? 'Đã chia sẻ một bài viết' : content.substring(0, 100),
         senderId: userId,
         senderName: socket.displayName,
         createdAt: message.createdAt
