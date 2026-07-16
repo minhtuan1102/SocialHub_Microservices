@@ -430,6 +430,121 @@ x-socketio-events:
       payload:
         userId: string (uuid)
 
+  # ── Video/Audio Call Signaling (WebRTC) ──────────────────────────────
+  # WebRTC is peer-to-peer: video/audio streams flow directly between browsers.
+  # The server only relays signaling metadata (SDP offers/answers and ICE candidates)
+  # via Socket.IO. No media is stored or processed on the server.
+  #
+  # ICE Servers used by clients:
+  #   - stun:stun.l.google.com:19302 (Google public STUN, free)
+  #   - stun:stun1.l.google.com:19302
+  # ─────────────────────────────────────────────────────────────────────
+
+  call-signaling-client-to-server:
+    - event: "call:initiate"
+      description: Caller initiates a video/audio call to a target user
+      payload:
+        targetUserId: string (uuid, the user being called)
+        callerName: string (display name of the caller)
+        callerAvatar: string (avatar URL of the caller, nullable)
+        callType: string (video | audio)
+      response:
+        event: "call:incoming" (sent to target user's personal room)
+      error: If target user is offline, emits "call:rejected" back to caller with reason "offline"
+
+    - event: "call:accept"
+      description: Callee accepts the incoming call
+      payload:
+        callerId: string (uuid)
+        calleeName: string
+        calleeAvatar: string (nullable)
+      response:
+        event: "call:accepted" (sent to caller's personal room)
+
+    - event: "call:reject"
+      description: Callee rejects or ignores the incoming call
+      payload:
+        callerId: string (uuid)
+        reason: string (rejected | busy | timeout), default "rejected"
+      response:
+        event: "call:rejected" (sent to caller's personal room)
+
+    - event: "call:end"
+      description: Either party ends the active call
+      payload:
+        targetUserId: string (uuid, the other participant)
+      response:
+        event: "call:ended" (sent to target user's personal room)
+
+    - event: "webrtc:offer"
+      description: Caller sends SDP Offer to callee (WebRTC signaling step 1)
+      payload:
+        targetUserId: string (uuid)
+        sdp: object (RTCSessionDescription — type + sdp string)
+      response:
+        event: "webrtc:offer" (forwarded to target user's personal room)
+
+    - event: "webrtc:answer"
+      description: Callee sends SDP Answer to caller (WebRTC signaling step 2)
+      payload:
+        targetUserId: string (uuid)
+        sdp: object (RTCSessionDescription — type + sdp string)
+      response:
+        event: "webrtc:answer" (forwarded to target user's personal room)
+
+    - event: "webrtc:ice-candidate"
+      description: Either party sends an ICE candidate for NAT traversal
+      payload:
+        targetUserId: string (uuid)
+        candidate: object (RTCIceCandidate — candidate, sdpMid, sdpMLineIndex)
+      response:
+        event: "webrtc:ice-candidate" (forwarded to target user's personal room)
+
+  call-signaling-server-to-client:
+    - event: "call:incoming"
+      description: Notifies target user of an incoming call (sent to personal room user:{userId})
+      payload:
+        callerId: string (uuid)
+        callerName: string
+        callerAvatar: string (nullable)
+        callType: string (video | audio)
+
+    - event: "call:accepted"
+      description: Notifies caller that callee accepted the call
+      payload:
+        calleeId: string (uuid)
+        calleeName: string
+        calleeAvatar: string (nullable)
+
+    - event: "call:rejected"
+      description: Notifies caller that callee rejected or is unavailable
+      payload:
+        calleeId: string (uuid)
+        reason: string (rejected | busy | timeout | offline)
+
+    - event: "call:ended"
+      description: Notifies the other party that the call has ended
+      payload:
+        userId: string (uuid, the user who ended the call)
+
+    - event: "webrtc:offer"
+      description: Forwarded SDP Offer from caller
+      payload:
+        senderId: string (uuid)
+        sdp: object (RTCSessionDescription)
+
+    - event: "webrtc:answer"
+      description: Forwarded SDP Answer from callee
+      payload:
+        senderId: string (uuid)
+        sdp: object (RTCSessionDescription)
+
+    - event: "webrtc:ice-candidate"
+      description: Forwarded ICE Candidate from either party
+      payload:
+        senderId: string (uuid)
+        candidate: object (RTCIceCandidate)
+
 # =======================================================================
 # SECTION 3 — Async / Event-driven (x-async-events extension)
 # =======================================================================

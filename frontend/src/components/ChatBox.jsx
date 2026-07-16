@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
-import { X, Send, Loader, Image } from "lucide-react"; // <-- Import thêm Image
+import { X, Send, Loader, Image, Phone, Video } from "lucide-react";
 
 // Component con tải hình ảnh an toàn thông qua Axios (hỗ trợ headers như Authorization và ngrok-skip-browser-warning)
 const ChatImage = ({ mediaId }) => {
@@ -137,7 +137,7 @@ const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
 };
 
 const ChatBox = ({ conversation, onClose, currentUserId }) => {
-    const { chatSocket } = useSocket();
+    const { chatSocket, initiateCall } = useSocket();
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState("");
@@ -364,9 +364,38 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                         </p>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full text-slate-500 hover:text-slate-800 transition cursor-pointer">
-                    <X className="w-4 h-4" />
-                </button>
+                
+                <div className="flex items-center space-x-1">
+                    {!isGroup && (
+                        <>
+                            <button
+                                onClick={() => initiateCall({
+                                    id: otherParticipant.userId,
+                                    displayName: otherParticipant.displayName,
+                                    avatarUrl: otherParticipant.avatarUrl
+                                }, "audio")}
+                                title="Gọi thoại"
+                                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 hover:text-emerald-600 transition cursor-pointer"
+                            >
+                                <Phone className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => initiateCall({
+                                    id: otherParticipant.userId,
+                                    displayName: otherParticipant.displayName,
+                                    avatarUrl: otherParticipant.avatarUrl
+                                }, "video")}
+                                title="Gọi Video"
+                                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 hover:text-blue-600 transition cursor-pointer"
+                            >
+                                <Video className="w-4 h-4" />
+                            </button>
+                        </>
+                    )}
+                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 hover:text-slate-800 transition cursor-pointer">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             {/* Vùng tin nhắn */}

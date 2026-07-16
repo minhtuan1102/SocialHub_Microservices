@@ -1,7 +1,7 @@
 # Chat Service — Messaging
 
 > Bounded Context: Realtime Messaging & Group Management
-> Quản lý hội thoại 1-1, nhóm chat, lịch sử tin nhắn, typing indicator, online presence và phát hành sự kiện realtime.
+> Quản lý hội thoại 1-1, nhóm chat, lịch sử tin nhắn, typing indicator, online presence, **gọi điện Video/Audio (WebRTC)** và phát hành sự kiện realtime.
 
 ## Overview
 
@@ -9,6 +9,7 @@
 - **Realtime via Socket.IO**: Sử dụng Socket.IO v4 kết hợp `@socket.io/redis-adapter` hỗ trợ mở rộng ngang (horizontal scaling) qua nhiều container instances.
 - **Message History**: Lưu trữ tin nhắn MongoDB, hỗ trợ phân trang cursor-based pagination thông qua compound index (`conversationId`, `createdAt`).
 - **Realtime Features**: Typing indicators (`typing:start`, `typing:stop`), read receipts (`message:read`), online presence (`user:online`, `user:offline`, `presence:heartbeat`).
+- **Video/Audio Call (WebRTC)**: Gọi điện video/audio 1-1 peer-to-peer. `chat-service` đóng vai trò **Signaling Server** — chuyển tiếp SDP Offer/Answer và ICE Candidates qua Socket.IO. Luồng media đi trực tiếp giữa 2 trình duyệt (P2P, mã hóa DTLS-SRTP). Sử dụng Google STUN Server miễn phí cho NAT traversal.
 - **Redis Pub/Sub Events**: Phát hành các sự kiện `message.sent` (khi người nhận offline) và `group.member.added` để `notification-service` xử lý gửi thông báo đẩy.
 - **Inter-service Integration**: Gọi REST API sang `user-service` (lấy thông tin người dùng batch) và `media-service` (lấy URL ảnh presigned).
 
@@ -65,6 +66,23 @@ Kết nối WebSocket được thiết lập qua đường dẫn `/socket.io/` v
   * Payload: `{ conversationId }`
 * **`presence:heartbeat`**: Định kỳ gửi để gia hạn TTL trạng thái online trong Redis (mặc định Redis key giữ 5 phút).
 
+#### Gọi điện WebRTC Signaling (Client → Server)
+
+* **`call:initiate`**: Khởi tạo cuộc gọi video/audio tới người dùng khác.
+  * Payload: `{ targetUserId, callerName, callerAvatar, callType: "video" | "audio" }`
+* **`call:accept`**: Chấp nhận cuộc gọi đến.
+  * Payload: `{ callerId, calleeName, calleeAvatar }`
+* **`call:reject`**: Từ chối cuộc gọi đến.
+  * Payload: `{ callerId, reason: "rejected" | "busy" | "timeout" }`
+* **`call:end`**: Kết thúc cuộc gọi đang diễn ra.
+  * Payload: `{ targetUserId }`
+* **`webrtc:offer`**: Gửi SDP Offer cho đối phương (bước 1 WebRTC signaling).
+  * Payload: `{ targetUserId, sdp }`
+* **`webrtc:answer`**: Gửi SDP Answer cho đối phương (bước 2 WebRTC signaling).
+  * Payload: `{ targetUserId, sdp }`
+* **`webrtc:ice-candidate`**: Gửi ICE Candidate cho NAT traversal.
+  * Payload: `{ targetUserId, candidate }`
+
 ### Server → Client (Sự kiện nhận về)
 
 * **`message:received`**: Phát tin nhắn mới đến toàn bộ phòng chat `conv:{conversationId}`.
@@ -77,6 +95,23 @@ Kết nối WebSocket được thiết lập qua đường dẫn `/socket.io/` v
   * Payload: `{ userId }`
 * **`user:offline`**: Thông báo người dùng trong cuộc hội thoại đã ngắt kết nối (offline).
   * Payload: `{ userId }`
+
+#### Gọi điện WebRTC Signaling (Server → Client)
+
+* **`call:incoming`**: Thông báo có cuộc gọi đến (gửi tới personal room `user:{userId}`).
+  * Payload: `{ callerId, callerName, callerAvatar, callType }`
+* **`call:accepted`**: Thông báo đối phương đã chấp nhận cuộc gọi.
+  * Payload: `{ calleeId, calleeName, calleeAvatar }`
+* **`call:rejected`**: Thông báo đối phương từ chối hoặc không khả dụng.
+  * Payload: `{ calleeId, reason }`
+* **`call:ended`**: Thông báo cuộc gọi đã kết thúc bởi phía đối phương.
+  * Payload: `{ userId }`
+* **`webrtc:offer`**: Chuyển tiếp SDP Offer từ người gọi.
+  * Payload: `{ senderId, sdp }`
+* **`webrtc:answer`**: Chuyển tiếp SDP Answer từ người nhận.
+  * Payload: `{ senderId, sdp }`
+* **`webrtc:ice-candidate`**: Chuyển tiếp ICE Candidate.
+  * Payload: `{ senderId, candidate }`
 * **`error`**: Trả về thông báo lỗi khi xử lý sự kiện socket thất bại.
   * Payload: `{ message }`
 
@@ -182,7 +217,8 @@ chat-service/
     │   ├── auth.handler.js       # Middleware xác thực Socket handshake JWT
     │   ├── message.handler.js    # Xử lý sự kiện tin nhắn (send, read, join)
     │   ├── presence.handler.js   # Xử lý trạng thái online/offline & heartbeat
-    │   └── typing.handler.js     # Xử lý chỉ báo đang soạn tin (typing indicator)
+    │   ├── typing.handler.js     # Xử lý chỉ báo đang soạn tin (typing indicator)
+    │   └── call.handler.js       # Xử lý signaling cuộc gọi Video/Audio (WebRTC)
     └── utils/
         ├── api.js                # Helper gọi REST API inter-service (user-service, media-service)
         ├── error.js              # Định nghĩa các lớp Error tuỳ chỉnh (HttpError)

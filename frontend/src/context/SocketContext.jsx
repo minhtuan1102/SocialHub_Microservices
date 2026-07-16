@@ -12,6 +12,8 @@ export const SocketProvider = ({ children }) => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [toast, setToast] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState({}); // Lưu danh sách user đang online: { userId: true }
+    const [incomingCall, setIncomingCall] = useState(null); // { callerId, callerName, callerAvatar, callType }
+    const [activeCall, setActiveCall] = useState(null); // { targetUser, callType, isCaller, offerSdp }
 
     // 1. Tải số lượng tin chưa đọc ban đầu bằng REST API
     const fetchUnreadCount = async () => {
@@ -157,6 +159,12 @@ export const SocketProvider = ({ children }) => {
             });
         });
 
+        // Lắng nghe cuộc gọi đến (Realtime WebRTC Incoming Call)
+        chSock.on("call:incoming", (data) => {
+            console.log("📞 [SOCKET] Nhận cuộc gọi đến từ:", data);
+            setIncomingCall(data);
+        });
+
         setChatSocket(chSock);
 
         // Cleanup dọn dẹp các kết nối
@@ -167,6 +175,63 @@ export const SocketProvider = ({ children }) => {
 
     }, [isAuthenticated]);
 
+    // Hàm chấp nhận cuộc gọi đến
+    const handleAcceptIncomingCall = () => {
+        if (!incomingCall || !chatSocket) return;
+
+        chatSocket.emit("call:accept", {
+            callerId: incomingCall.callerId
+        });
+
+        setActiveCall({
+            targetUser: {
+                id: incomingCall.callerId,
+                displayName: incomingCall.callerName,
+                avatarUrl: incomingCall.callerAvatar
+            },
+            callType: incomingCall.callType,
+            isCaller: false
+        });
+
+        setIncomingCall(null);
+    };
+
+    // Hàm từ chối cuộc gọi đến
+    const handleRejectIncomingCall = () => {
+        if (!incomingCall || !chatSocket) return;
+
+        chatSocket.emit("call:reject", {
+            callerId: incomingCall.callerId,
+            reason: "rejected"
+        });
+
+        setIncomingCall(null);
+    };
+
+    // Hàm khởi tạo cuộc gọi từ Client
+    const initiateCall = (targetUser, callType = "video") => {
+        if (!targetUser || !chatSocket) return;
+
+        const targetId = targetUser.id || targetUser.userId;
+        if (!targetId) {
+            console.error("❌ Không thể khởi tạo cuộc gọi: targetUserId không hợp lệ", targetUser);
+            return;
+        }
+
+        const normalizedTarget = {
+            id: targetId,
+            userId: targetId,
+            displayName: targetUser.displayName || "Người dùng",
+            avatarUrl: targetUser.avatarUrl || null
+        };
+
+        setActiveCall({
+            targetUser: normalizedTarget,
+            callType,
+            isCaller: true
+        });
+    };
+
     return (
         <SocketContext.Provider value={{ 
             notificationSocket, 
@@ -176,7 +241,14 @@ export const SocketProvider = ({ children }) => {
             toast, 
             setToast,
             onlineUsers,
-            setOnlineUsers
+            setOnlineUsers,
+            incomingCall,
+            setIncomingCall,
+            activeCall,
+            setActiveCall,
+            handleAcceptIncomingCall,
+            handleRejectIncomingCall,
+            initiateCall
         }}>
             {children}
         </SocketContext.Provider>

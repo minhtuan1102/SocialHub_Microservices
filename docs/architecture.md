@@ -40,7 +40,7 @@
 | **user-service** | Auth (register, login, JWT), profile management, user search | Node.js (Express), bcrypt, jsonwebtoken | 5001 |
 | **friend-service** | Friend requests, friendship management, mutual friends, suggestions | Node.js (Express), ioredis (pub) | 5002 |
 | **post-service** | Posts CRUD, like/comment, share, newsfeed (cached) | Node.js (Express), ioredis (pub + cache) | 5003 |
-| **chat-service** | 1-1 messaging, group chat, realtime via Socket.IO | Node.js (Express), Socket.IO Server, @socket.io/redis-adapter | 5004 |
+| **chat-service** | 1-1 messaging, group chat, realtime via Socket.IO, **WebRTC signaling (video/audio call)** | Node.js (Express), Socket.IO Server, @socket.io/redis-adapter | 5004 |
 | **media-service** | File upload to MinIO, presigned URL generation, media metadata | Node.js (Express), minio (SDK), multer | 5005 |
 | **notification-service** | Event consumption (Redis Sub), notification CRUD, realtime push | Node.js (Express), Socket.IO Server, ioredis (sub) | 5006 |
 | **PostgreSQL** | Relational data: users, profiles, friendships, posts, comments, likes | PostgreSQL 16 Alpine | 5432 |
@@ -71,6 +71,7 @@
 - **TCP**: Database protocol (PostgreSQL, MongoDB, Redis, MinIO S3)
 - **Presigned URL (GET)**: Client tải ảnh trực tiếp từ MinIO bằng signed URL
 - **pub/sub**: Redis Pub/Sub cho cross-service events
+- **WebRTC (P2P)**: Luồng video/audio đi trực tiếp giữa 2 trình duyệt (peer-to-peer, mã hóa DTLS-SRTP). `chat-service` chỉ làm Signaling Server chuyển tiếp SDP/ICE metadata qua Socket.IO. Sử dụng Google STUN Server miễn phí (`stun:stun.l.google.com:19302`).
 
 ### Internal Service Communication (REST)
 

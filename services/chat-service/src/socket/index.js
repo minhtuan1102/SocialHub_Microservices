@@ -6,6 +6,7 @@ import { socketAuthMiddleware } from './auth.handler.js';
 import registerMessageHandlers from './message.handler.js';
 import registerTypingHandlers from './typing.handler.js';
 import registerPresenceHandlers, { handleUserOnline, handleUserOffline } from './presence.handler.js';
+import registerCallHandlers from './call.handler.js';
 
 let ioInstance = null;
 
@@ -47,6 +48,7 @@ export const initSocketServer = (server) => {
       registerMessageHandlers(io, socket);
       registerTypingHandlers(io, socket);
       registerPresenceHandlers(io, socket);
+      registerCallHandlers(io, socket);
 
       // 3. Handle user disconnection
       socket.on('disconnect', async () => {

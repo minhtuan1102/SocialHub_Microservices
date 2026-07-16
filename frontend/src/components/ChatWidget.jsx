@@ -4,11 +4,21 @@ import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import ChatBox from "./ChatBox";
+import IncomingCallModal from "./IncomingCallModal";
+import CallWindow from "./CallWindow";
 import { Users, Loader, MessageSquarePlus, X } from "lucide-react";
 
 const ChatWidget = () => {
     const { user: currentUser } = useAuth();
-    const { onlineUsers, chatSocket } = useSocket();
+    const { 
+        onlineUsers, 
+        chatSocket, 
+        incomingCall, 
+        activeCall, 
+        setActiveCall, 
+        handleAcceptIncomingCall, 
+        handleRejectIncomingCall 
+    } = useSocket();
     const [friends, setFriends] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -325,6 +335,25 @@ const ChatWidget = () => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Modal Nhận cuộc gọi đến (WebRTC Incoming Call) */}
+            {incomingCall && (
+                <IncomingCallModal
+                    incomingCall={incomingCall}
+                    onAccept={handleAcceptIncomingCall}
+                    onReject={handleRejectIncomingCall}
+                />
+            )}
+
+            {/* Cửa sổ Cuộc gọi Video/Audio đang diễn ra (WebRTC Active Call) */}
+            {activeCall && (
+                <CallWindow
+                    activeCall={activeCall}
+                    chatSocket={chatSocket}
+                    currentUserId={currentUser.id}
+                    onClose={() => setActiveCall(null)}
+                />
             )}
         </>
     );
