@@ -1,16 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2, Minimize2 } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2, Minimize2, Users } from "lucide-react";
 import api from "../services/api";
 
-// Cấu hình ICE Servers cho WebRTC.
-// TRÊN PRODUCTION: Để vượt qua tường lửa đối xứng (Symmetric NAT) của 3G/4G/5G hoặc wifi công ty,
-// bạn bắt buộc phải cấu hình thêm ít nhất một TURN Server (ví dụ: Coturn, Twilio, Xirsys).
 const ICE_SERVERS = {
     iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
-        // Cấu hình TURN server vừa deploy trên Google Cloud
         {
             urls: import.meta.env.VITE_TURN_URL || "turn:turn.yourdomain.com:3478",
             username: import.meta.env.VITE_TURN_USERNAME || "socialhub_user",
@@ -19,21 +15,63 @@ const ICE_SERVERS = {
     ]
 };
 
+// Sub-component hiển thị từng ô tham gia cuộc gọi nhóm kiểu Google Meet / Zoom
+const GroupParticipantTile = ({ participant, callType }) => {
+    const videoRef = useRef(null);
+
+    useEffect(() => {
+        if (videoRef.current && participant.stream) {
+            videoRef.current.srcObject = participant.stream;
+        }
+    }, [participant.stream]);
+
+    return (
+        <div className="relative bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg aspect-video">
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+            />
+            {(!participant.stream || callType === 'audio') && (
+                <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center space-y-2">
+                    <img
+                        src={participant.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
+                        alt={participant.displayName}
+                        className="w-16 h-16 rounded-full border-2 border-slate-600 object-cover"
+                    />
+                    <span className="text-white text-xs font-semibold">{participant.displayName}</span>
+                </div>
+            )}
+            <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur px-2.5 py-1 rounded-lg text-[11px] text-white font-medium flex items-center space-x-1.5 border border-white/10">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="truncate max-w-[120px]">{participant.displayName}</span>
+            </div>
+        </div>
+    );
+};
+
 const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
     if (!activeCall) return null;
 
-    const { targetUser = {}, callType = 'video', isCaller = false, offerSdp } = activeCall;
+    const { targetUser = {}, callType = 'video', isCaller = false } = activeCall;
+    const isGroup = targetUser?.isGroup || false;
+    const groupId = targetUser?.groupId || targetUser?.id;
 
-    const [callStatus, setCallStatus] = useState(isCaller ? "calling" : "connecting"); // 'calling' | 'connecting' | 'connected' | 'ended'
+    const [callStatus, setCallStatus] = useState(isCaller ? "calling" : "connecting");
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(callType === 'audio');
     const [duration, setDuration] = useState(0);
     const [isMinimized, setIsMinimized] = useState(false);
 
+    // Dành cho Cuộc gọi nhóm: Danh sách các thành viên đang tham gia cuộc gọi
+    const [groupParticipants, setGroupParticipants] = useState([]); // [{ userId, displayName, avatarUrl, stream }]
+
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const remoteAudioRef = useRef(null);
     const peerConnectionRef = useRef(null);
+    const groupPeersRef = useRef({}); // { [peerUserId]: { pc, stream, displayName, avatarUrl } }
     const localStreamRef = useRef(null);
     const pendingCandidatesRef = useRef([]);
     const pendingOfferRef = useRef(null);
@@ -41,7 +79,7 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
 
     const targetTargetId = targetUser?.id || targetUser?.userId || targetUser?.groupId || '';
 
-    // Tối ưu hóa băng thông & chất lượng mic với Opus Codec (128kbps High Fidelity, Inband FEC)
+    // Tối ưu hóa băng thông & chất lượng mic với Opus Codec
     const tuneOpusAudioSDP = (sdpObj) => {
         if (!sdpObj || !sdpObj.sdp) return sdpObj;
         let sdpStr = sdpObj.sdp;
@@ -57,27 +95,58 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         };
     };
 
-    // Helper xử lý SDP Offer (dùng chung cho cả khi đến sớm hoặc đến đúng lúc)
-    const processOffer = async (pc, sdp) => {
-        try {
-            console.log("📥 [WEBRTC] Xử lý SDP Offer từ đối phương:", targetTargetId);
-            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-            const rawAnswer = await pc.createAnswer();
-            const answer = tuneOpusAudioSDP(rawAnswer);
-            await pc.setLocalDescription(answer);
-
-            chatSocket.emit("webrtc:answer", {
-                targetUserId: targetTargetId,
-                sdp: answer
-            });
-
-            while (pendingCandidatesRef.current.length > 0) {
-                const candidate = pendingCandidatesRef.current.shift();
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            }
-        } catch (err) {
-            console.error("❌ Lỗi xử lý SDP Offer:", err);
+    // Helper tạo PeerConnection cho một thành viên trong nhóm
+    const createPeerConnectionForGroupMember = async (peerUserId, peerDisplayName, peerAvatarUrl, iceConfig) => {
+        if (groupPeersRef.current[peerUserId]?.pc) {
+            return groupPeersRef.current[peerUserId].pc;
         }
+
+        const pc = new RTCPeerConnection(iceConfig);
+
+        // Add local tracks to peer connection
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach(track => {
+                pc.addTrack(track, localStreamRef.current);
+            });
+        }
+
+        pc.ontrack = (event) => {
+            console.log(`⚡ [GROUP WEBRTC] Nhận stream từ ${peerDisplayName} (${peerUserId})`);
+            const stream = event.streams[0];
+            groupPeersRef.current[peerUserId] = {
+                ...groupPeersRef.current[peerUserId],
+                stream
+            };
+
+            setGroupParticipants(prev => {
+                const existingIndex = prev.findIndex(p => p.userId === peerUserId);
+                if (existingIndex >= 0) {
+                    const updated = [...prev];
+                    updated[existingIndex] = { ...updated[existingIndex], stream };
+                    return updated;
+                }
+                return [...prev, { userId: peerUserId, displayName: peerDisplayName, avatarUrl: peerAvatarUrl, stream }];
+            });
+            setCallStatus("connected");
+        };
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate && chatSocket) {
+                chatSocket.emit("webrtc:ice-candidate", {
+                    targetUserId: peerUserId,
+                    candidate: event.candidate
+                });
+            }
+        };
+
+        groupPeersRef.current[peerUserId] = {
+            pc,
+            displayName: peerDisplayName,
+            avatarUrl: peerAvatarUrl,
+            stream: null
+        };
+
+        return pc;
     };
 
     // Timer đếm thời lượng cuộc gọi khi đã kết nối thành công
@@ -93,7 +162,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         };
     }, [callStatus]);
 
-    // Format mm:ss
     const formatDuration = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -106,113 +174,79 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
 
         const setupWebRTC = async () => {
             try {
-                // Tải cấu hình ICE/TURN động từ chat-service qua Gateway
                 let serversConfig = ICE_SERVERS;
                 try {
                     const res = await api.get("/conversations/ice-servers");
                     if (res.data && res.data.success && res.data.data.iceServers) {
                         serversConfig = { iceServers: res.data.data.iceServers };
-                        console.log("📡 [WEBRTC] Tải thành công ICE Servers động từ backend.");
                     }
                 } catch (apiErr) {
-                    console.warn("⚠️ [WEBRTC] Không thể tải ICE Servers động, sử dụng fallback mặc định:", apiErr);
+                    console.warn("⚠️ Fallback ICE Servers:", apiErr);
                 }
 
-                // 1. Khởi tạo RTCPeerConnection
-                const pc = new RTCPeerConnection(serversConfig);
-                peerConnectionRef.current = pc;
-
-                // 2. Lắng nghe luồng remote từ đối phương
-                pc.ontrack = (event) => {
-                    console.log("⚡ [WEBRTC] Nhận luồng remote media thành công:", event.streams[0]);
-                    const remoteStream = event.streams[0];
-                    if (remoteStream) {
-                        if (remoteVideoRef.current) {
-                            remoteVideoRef.current.srcObject = remoteStream;
-                            remoteVideoRef.current.muted = false;
-                            remoteVideoRef.current.volume = 1.0;
-                            remoteVideoRef.current.play().catch(() => { });
-                        }
-                        if (remoteAudioRef.current) {
-                            remoteAudioRef.current.srcObject = remoteStream;
-                            remoteAudioRef.current.muted = false;
-                            remoteAudioRef.current.volume = 1.0;
-                            remoteAudioRef.current.play().catch(() => { });
-                        }
-                    }
-                    setCallStatus("connected");
-                };
-
-                // 3. Lắng nghe ICE Candidates sinh ra local -> gửi sang đối phương
-                pc.onicecandidate = (event) => {
-                    if (event.candidate && chatSocket && targetTargetId) {
-                        chatSocket.emit("webrtc:ice-candidate", {
-                            targetUserId: targetTargetId,
-                            candidate: event.candidate
-                        });
-                    }
-                };
-
-                // 4. Theo dõi thay đổi trạng thái kết nối ICE
-                pc.oniceconnectionstatechange = () => {
-                    console.log("📡 WebRTC ICE Connection State:", pc.iceConnectionState);
-                    if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
-                        setCallStatus("connected");
-                    } else if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
-                        console.warn("⚠️ Kết nối WebRTC gián đoạn");
-                    }
-                };
-
-                // 5. Lấy luồng Media từ Camera/Micro (Chuẩn HD Audio Studio 48kHz)
+                // 1. Xin quyền Camera / Micro
                 const constraints = {
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true,
-                        sampleRate: 48000,
-                        channelCount: 1
-                    },
-                    video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
+                    audio: true,
+                    video: callType === "video" ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
                 };
 
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                if (!isSubscribed) return;
+                if (!isSubscribed) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
 
                 localStreamRef.current = stream;
-
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = stream;
                 }
 
-                // Thêm các track local vào PeerConnection
-                stream.getTracks().forEach(track => {
-                    pc.addTrack(track, stream);
-                });
-
-                // Đánh dấu media cục bộ đã chuẩn bị xong
                 isMediaReadyRef.current = true;
 
-                // NẾU LÀ NGƯỜI GỌI (Caller): Bắt đầu phát cuộc gọi sang Server (Hỗ trợ 1-1 và Nhóm)
-                if (isCaller) {
-                    if (targetUser?.isGroup && targetUser?.targetUserIds) {
+                // TRƯỜNG HỢP A: CUỘC GỌI NHÓM (Zoom / Google Meet Style)
+                if (isGroup) {
+                    chatSocket.emit("group-call:join", { groupId });
+
+                    if (isCaller && targetUser?.targetUserIds) {
                         chatSocket.emit("call:initiate", {
-                            groupId: targetUser.groupId,
+                            groupId,
                             targetUserIds: targetUser.targetUserIds,
                             groupName: targetUser.displayName,
                             groupAvatar: targetUser.avatarUrl,
                             callType
                         });
-                    } else {
+                    }
+                } else {
+                    // TRƯỜNG HỢP B: CUỘC GỌI 1-1 (1-on-1 Call)
+                    const pc = new RTCPeerConnection(serversConfig);
+                    peerConnectionRef.current = pc;
+
+                    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+                    pc.ontrack = (event) => {
+                        const remoteStream = event.streams[0];
+                        if (remoteStream) {
+                            if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+                            if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream;
+                        }
+                        setCallStatus("connected");
+                    };
+
+                    pc.onicecandidate = (event) => {
+                        if (event.candidate && chatSocket && targetTargetId) {
+                            chatSocket.emit("webrtc:ice-candidate", {
+                                targetUserId: targetTargetId,
+                                candidate: event.candidate
+                            });
+                        }
+                    };
+
+                    if (isCaller) {
                         chatSocket.emit("call:initiate", {
                             targetUserId: targetTargetId,
                             callType
                         });
                     }
-                } else if (offerSdp || pendingOfferRef.current) {
-                    // Nếu là Callee và đã nhận Offer trước đó
-                    const offerToProcess = offerSdp || pendingOfferRef.current;
-                    pendingOfferRef.current = null;
-                    await processOffer(pc, offerToProcess);
                 }
 
             } catch (err) {
@@ -227,89 +261,139 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         return () => {
             isSubscribed = false;
             isMediaReadyRef.current = false;
-            cleanupWebRTC();
         };
     }, []);
 
-    // Đăng ký các sự kiện WebRTC qua Socket
+    // Xử lý các Socket Event về WebRTC & Group Call Rooms
     useEffect(() => {
-        if (!chatSocket || !targetTargetId) return;
+        if (!chatSocket) return;
 
-        // 1. Khi người nhận chấp nhận cuộc gọi (Dành cho Caller)
-        const handleCallAccepted = async () => {
-            console.log("📞 [WEBRTC] Đối phương đã chấp nhận cuộc gọi. Đang tạo SDP Offer...");
-            const pc = peerConnectionRef.current;
-            if (!pc) return;
+        // --- XỬ LÝ SỰ KIỆN GỌI NHÓM (GROUP MEET ROOM) ---
+        const handleGroupJoinedRoom = async ({ existingParticipants }) => {
+            console.log("👥 [GROUP MEET] Tham gia phòng họp nhóm thành công. Các thành viên hiện có:", existingParticipants);
+            setCallStatus("connected");
 
+            let serversConfig = ICE_SERVERS;
             try {
+                const res = await api.get("/conversations/ice-servers");
+                if (res.data?.data?.iceServers) serversConfig = { iceServers: res.data.data.iceServers };
+            } catch (e) {}
+
+            for (const peer of existingParticipants) {
+                const pc = await createPeerConnectionForGroupMember(peer.userId, peer.displayName, peer.avatarUrl, serversConfig);
                 const rawOffer = await pc.createOffer();
                 const offer = tuneOpusAudioSDP(rawOffer);
                 await pc.setLocalDescription(offer);
 
                 chatSocket.emit("webrtc:offer", {
+                    targetUserId: peer.userId,
+                    sdp: offer
+                });
+            }
+        };
+
+        const handleGroupUserJoined = async ({ userId, displayName, avatarUrl }) => {
+            console.log(`👥 [GROUP MEET] Thành viên mới gia nhập cuộc gọi: ${displayName} (${userId})`);
+            setCallStatus("connected");
+            setGroupParticipants(prev => {
+                if (prev.some(p => p.userId === userId)) return prev;
+                return [...prev, { userId, displayName, avatarUrl, stream: null }];
+            });
+        };
+
+        const handleGroupUserLeft = ({ userId }) => {
+            console.log(`👥 [GROUP MEET] Thành viên đã rời cuộc gọi: ${userId}`);
+            if (groupPeersRef.current[userId]) {
+                groupPeersRef.current[userId].pc.close();
+                delete groupPeersRef.current[userId];
+            }
+            setGroupParticipants(prev => prev.filter(p => p.userId !== userId));
+        };
+
+        // --- XỬ LÝ SỰ KIỆN WEBRTC P2P (DÙNG CHUNG) ---
+        const handleCallAccepted = async () => {
+            setCallStatus("connected");
+            if (!isGroup && peerConnectionRef.current) {
+                const rawOffer = await peerConnectionRef.current.createOffer();
+                const offer = tuneOpusAudioSDP(rawOffer);
+                await peerConnectionRef.current.setLocalDescription(offer);
+                chatSocket.emit("webrtc:offer", {
                     targetUserId: targetTargetId,
                     sdp: offer
                 });
-            } catch (err) {
-                console.error("❌ Lỗi tạo SDP Offer:", err);
             }
         };
 
-        // 2. Nhận SDP Offer (Dành cho Callee nếu chưa xử lý)
         const handleIncomingOffer = async ({ senderId, sdp }) => {
-            if (senderId !== targetTargetId) return;
-            console.log("📥 [WEBRTC] Nhận tin nhắn webrtc:offer từ đối phương:", senderId);
-            const pc = peerConnectionRef.current;
-            if (!pc || !isMediaReadyRef.current) {
-                console.log("⏳ [WEBRTC] PeerConnection/Media chưa sẵn sàng, lưu SDP Offer vào bộ đệm pending");
-                pendingOfferRef.current = sdp;
-                return;
-            }
-
-            await processOffer(pc, sdp);
-        };
-
-        // 3. Nhận SDP Answer từ Callee (Dành cho Caller)
-        const handleIncomingAnswer = async ({ senderId, sdp }) => {
-            if (senderId !== targetTargetId) return;
-            const pc = peerConnectionRef.current;
-            if (!pc) return;
-
+            let serversConfig = ICE_SERVERS;
             try {
-                console.log("📥 [WEBRTC] Nhận SDP Answer từ đối phương:", senderId);
+                const res = await api.get("/conversations/ice-servers");
+                if (res.data?.data?.iceServers) serversConfig = { iceServers: res.data.data.iceServers };
+            } catch (e) {}
+
+            if (isGroup) {
+                const pc = await createPeerConnectionForGroupMember(senderId, "Thành viên nhóm", null, serversConfig);
                 await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-                console.log("✅ Đã hoàn tất bắt tay SDP Answer!");
+                const rawAnswer = await pc.createAnswer();
+                const answer = tuneOpusAudioSDP(rawAnswer);
+                await pc.setLocalDescription(answer);
 
-                while (pendingCandidatesRef.current.length > 0) {
-                    const candidate = pendingCandidatesRef.current.shift();
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                }
-            } catch (err) {
-                console.error("❌ Lỗi đặt Remote Description:", err);
+                chatSocket.emit("webrtc:answer", {
+                    targetUserId: senderId,
+                    sdp: answer
+                });
+            } else {
+                if (senderId !== targetTargetId) return;
+                const pc = peerConnectionRef.current;
+                if (!pc) return;
+                await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                const rawAnswer = await pc.createAnswer();
+                const answer = tuneOpusAudioSDP(rawAnswer);
+                await pc.setLocalDescription(answer);
+
+                chatSocket.emit("webrtc:answer", {
+                    targetUserId: targetTargetId,
+                    sdp: answer
+                });
             }
         };
 
-        // 4. Nhận ICE Candidate
+        const handleIncomingAnswer = async ({ senderId, sdp }) => {
+            if (isGroup) {
+                const peerObj = groupPeersRef.current[senderId];
+                if (peerObj && peerObj.pc) {
+                    await peerObj.pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                }
+            } else {
+                if (senderId !== targetTargetId) return;
+                const pc = peerConnectionRef.current;
+                if (pc) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                }
+            }
+        };
+
         const handleIncomingIceCandidate = async ({ senderId, candidate }) => {
-            if (senderId !== targetTargetId) return;
-            const pc = peerConnectionRef.current;
-
-            try {
-                if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                } else {
-                    pendingCandidatesRef.current.push(candidate);
+            if (isGroup) {
+                const peerObj = groupPeersRef.current[senderId];
+                if (peerObj && peerObj.pc && peerObj.pc.remoteDescription) {
+                    await peerObj.pc.addIceCandidate(new RTCIceCandidate(candidate));
                 }
-            } catch (err) {
-                console.error("❌ Lỗi thêm ICE Candidate:", err);
+            } else {
+                if (senderId !== targetTargetId) return;
+                const pc = peerConnectionRef.current;
+                if (pc && pc.remoteDescription) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                }
             }
         };
 
-        // 5. Khi cuộc gọi bị từ chối hoặc người dùng ngắt máy
         const handleCallRejected = ({ reason }) => {
-            alert(reason === 'offline' ? 'Người dùng đang ngoại tuyến.' : 'Cuộc gọi bị từ chối.');
-            cleanupWebRTC();
-            onClose();
+            if (!isGroup) {
+                alert(reason === 'offline' ? 'Người dùng đang ngoại tuyến.' : 'Cuộc gọi bị từ chối.');
+                cleanupWebRTC();
+                onClose();
+            }
         };
 
         const handleCallEnded = () => {
@@ -324,6 +408,11 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         chatSocket.on("call:rejected", handleCallRejected);
         chatSocket.on("call:ended", handleCallEnded);
 
+        // Subscriptions cho Group Meet
+        chatSocket.on("group-call:joined-room", handleGroupJoinedRoom);
+        chatSocket.on("group-call:user-joined", handleGroupUserJoined);
+        chatSocket.on("group-call:user-left", handleGroupUserLeft);
+
         return () => {
             chatSocket.off("call:accepted", handleCallAccepted);
             chatSocket.off("webrtc:offer", handleIncomingOffer);
@@ -331,31 +420,44 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
             chatSocket.off("webrtc:ice-candidate", handleIncomingIceCandidate);
             chatSocket.off("call:rejected", handleCallRejected);
             chatSocket.off("call:ended", handleCallEnded);
-        };
-    }, [chatSocket, targetTargetId]);
 
-    // Dọn dẹp luồng Media & PeerConnection
+            chatSocket.off("group-call:joined-room", handleGroupJoinedRoom);
+            chatSocket.off("group-call:user-joined", handleGroupUserJoined);
+            chatSocket.off("group-call:user-left", handleGroupUserLeft);
+        };
+    }, [chatSocket, targetTargetId, isGroup, groupId]);
+
+    // Dọn dẹp tất cả tài nguyên WebRTC khi tắt cuộc gọi
     const cleanupWebRTC = () => {
+        if (isGroup && chatSocket && groupId) {
+            chatSocket.emit("group-call:leave", { groupId });
+        }
+
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
         }
+
         if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
             peerConnectionRef.current = null;
         }
+
+        Object.values(groupPeersRef.current).forEach(peerObj => {
+            if (peerObj.pc) peerObj.pc.close();
+        });
+        groupPeersRef.current = {};
     };
 
-    // Bấm nút Kết thúc cuộc gọi
+    // Người dùng ngắt máy
     const handleEndCall = () => {
-        if (chatSocket && targetTargetId) {
+        if (!isGroup && chatSocket && targetTargetId) {
             chatSocket.emit("call:end", { targetUserId: targetTargetId });
         }
         cleanupWebRTC();
         onClose();
     };
 
-    // Toggle Mute Micro
     const toggleMute = () => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -366,7 +468,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         }
     };
 
-    // Toggle Turn Off Camera
     const toggleVideo = () => {
         if (localStreamRef.current) {
             const videoTrack = localStreamRef.current.getVideoTracks()[0];
@@ -384,9 +485,9 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                 : "inset-0 bg-slate-950/95 flex items-center justify-center p-4"
                 }`}
         >
-            <div className={`relative w-full h-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl ${isMinimized ? '' : 'max-w-4xl max-h-[85vh]'}`}>
+            <div className={`relative w-full h-full bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden flex flex-col justify-between shadow-2xl ${isMinimized ? '' : 'max-w-5xl max-h-[90vh]'}`}>
 
-                {/* Header thanh công cụ (Tên đối phương + Thời lượng) */}
+                {/* Header thanh công cụ */}
                 <div className="absolute top-0 inset-x-0 p-4 z-20 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent">
                     <div className="flex items-center space-x-3">
                         <img
@@ -395,7 +496,15 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                             className="w-10 h-10 rounded-full border border-slate-600 object-cover"
                         />
                         <div>
-                            <h4 className="text-white font-bold text-sm">{targetUser?.displayName || "Người dùng"}</h4>
+                            <h4 className="text-white font-bold text-sm flex items-center space-x-2">
+                                <span>{targetUser?.displayName || "Cuộc gọi nhóm"}</span>
+                                {isGroup && (
+                                    <span className="bg-blue-600/30 border border-blue-500/40 text-blue-400 text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1">
+                                        <Users className="w-3 h-3" />
+                                        <span>{groupParticipants.length + 1} người</span>
+                                    </span>
+                                )}
+                            </h4>
                             <p className="text-xs text-slate-300 font-mono">
                                 {callStatus === "connected" ? formatDuration(duration) : callStatus === "calling" ? "Đang đổ chuông..." : "Đang kết nối..."}
                             </p>
@@ -410,58 +519,94 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                     </button>
                 </div>
 
-                {/* Vùng xem Remote Video & Audio (Main Viewport) */}
-                <div className="relative flex-1 bg-slate-950 flex items-center justify-center overflow-hidden">
-                    <video
-                        ref={remoteVideoRef}
-                        autoPlay
-                        playsInline
-                        className="w-full h-full object-cover"
-                    />
-                    <audio
-                        ref={remoteAudioRef}
-                        autoPlay
-                        playsInline
-                        className="hidden"
-                    />
+                {/* Vùng xem Stream Video/Audio */}
+                <div className="relative flex-1 bg-slate-950 p-4 pt-16 flex items-center justify-center overflow-hidden">
 
-                    {/* Placeholder khi chưa thấy Video remote hoặc là Cuộc gọi thoại */}
-                    {(callStatus !== "connected" || callType === "audio") && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 space-y-4">
-                            <img
-                                src={targetUser?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
-                                alt={targetUser?.displayName || "Người dùng"}
-                                className="w-28 h-28 rounded-full border-4 border-slate-700 object-cover animate-pulse"
-                            />
-                            <p className="text-slate-300 text-sm font-medium">
-                                {callStatus === "calling" ? "Đang chờ đối phương nhấc máy..." : "Đã kết nối cuộc gọi thoại"}
-                            </p>
+                    {/* HIỂN THỊ GIAO DIỆN HỌP NHÓM (GOOGLE MEET / ZOOM STYLE GRID) */}
+                    {isGroup ? (
+                        <div className="w-full h-full grid gap-3 p-2 overflow-y-auto auto-rows-fr grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                            {/* Ô camera cá nhân (Local User) */}
+                            <div className="relative bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg aspect-video">
+                                <video
+                                    ref={localVideoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="w-full h-full object-cover mirror"
+                                />
+                                {(isVideoOff || callType === 'audio') && (
+                                    <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center space-y-2">
+                                        <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl">
+                                            Tôi
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur px-2.5 py-1 rounded-lg text-[11px] text-white font-medium border border-white/10">
+                                    Bạn (Tôi)
+                                </div>
+                            </div>
+
+                            {/* Ô hiển thị của từng thành viên đã tham gia cuộc gọi nhóm */}
+                            {groupParticipants.map(participant => (
+                                <GroupParticipantTile
+                                    key={participant.userId}
+                                    participant={participant}
+                                    callType={callType}
+                                />
+                            ))}
                         </div>
-                    )}
-
-                    {/* Vùng xem Local Video (Picture in Picture ở góc nhỏ) */}
-                    {callType === "video" && (
-                        <div className="absolute bottom-4 right-4 w-36 h-48 bg-slate-900 border-2 border-slate-700 rounded-2xl overflow-hidden shadow-2xl z-10">
+                    ) : (
+                        /* HIỂN THỊ GIAO DIỆN GỌI 1-1 */
+                        <>
                             <video
-                                ref={localVideoRef}
+                                ref={remoteVideoRef}
                                 autoPlay
                                 playsInline
-                                muted
-                                className="w-full h-full object-cover mirror"
+                                className="w-full h-full object-cover"
                             />
-                            {isVideoOff && (
-                                <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-slate-500 text-xs">
-                                    Cam Off
+                            <audio
+                                ref={remoteAudioRef}
+                                autoPlay
+                                playsInline
+                                className="hidden"
+                            />
+
+                            {(callStatus !== "connected" || callType === "audio") && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 space-y-4">
+                                    <img
+                                        src={targetUser?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
+                                        alt={targetUser?.displayName || "Người dùng"}
+                                        className="w-28 h-28 rounded-full border-4 border-slate-700 object-cover animate-pulse"
+                                    />
+                                    <p className="text-slate-300 text-sm font-medium">
+                                        {callStatus === "calling" ? "Đang chờ đối phương nhấc máy..." : "Đã kết nối cuộc gọi thoại"}
+                                    </p>
                                 </div>
                             )}
-                        </div>
+
+                            {callType === "video" && (
+                                <div className="absolute bottom-4 right-4 w-36 h-48 bg-slate-900 border-2 border-slate-700 rounded-2xl overflow-hidden shadow-2xl z-10">
+                                    <video
+                                        ref={localVideoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="w-full h-full object-cover mirror"
+                                    />
+                                    {isVideoOff && (
+                                        <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-slate-500 text-xs">
+                                            Cam Off
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 
-                {/* Footer Thanh Điều Khiển Cuộc Gọi (Controls Bar) */}
+                {/* Footer Thanh Điều Khiển Cuộc Gọi */}
                 {!isMinimized && (
                     <div className="p-6 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-center space-x-6 z-20">
-                        {/* Micro Toggle */}
                         <button
                             onClick={toggleMute}
                             className={`p-4 rounded-full border transition cursor-pointer ${isMuted ? "bg-rose-600 border-rose-500 text-white" : "bg-slate-800 hover:bg-slate-700 border-slate-600 text-white"
@@ -471,7 +616,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                             {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                         </button>
 
-                        {/* End Call Button */}
                         <button
                             onClick={handleEndCall}
                             className="p-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white border border-rose-500 shadow-lg cursor-pointer transition transform hover:scale-105"
@@ -480,7 +624,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                             <PhoneOff className="w-7 h-7" />
                         </button>
 
-                        {/* Camera Toggle (chỉ hiện nếu là Video Call) */}
                         {callType === "video" && (
                             <button
                                 onClick={toggleVideo}

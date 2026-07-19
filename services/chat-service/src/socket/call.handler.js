@@ -169,4 +169,62 @@ export default (io, socket) => {
       console.error('❌ Error handling webrtc:ice-candidate:', error.message);
     }
   });
+
+  // 8. Group Call Room: Join Room (Zoom / Google Meet Mesh Topology)
+  socket.on('group-call:join', async (payload) => {
+    try {
+      const { groupId } = payload;
+      if (!groupId) return;
+
+      const roomName = `group-call:${groupId}`;
+      
+      // Lấy danh sách các socket đang tham gia phòng cuộc gọi nhóm này
+      const existingSockets = await io.in(roomName).fetchSockets();
+      const existingParticipants = existingSockets
+        .filter(s => String(s.userId) !== String(currentUserId))
+        .map(s => ({
+          userId: s.userId,
+          displayName: s.displayName,
+          avatarUrl: s.avatarUrl
+        }));
+
+      socket.join(roomName);
+      console.log(`👥 [GROUP CALL] User ${currentUserId} (${socket.displayName}) joined meeting room ${roomName}. Existing peers count:`, existingParticipants.length);
+
+      // Gửi danh sách thành viên hiện có trong phòng cho người mới vào
+      socket.emit('group-call:joined-room', {
+        groupId,
+        existingParticipants
+      });
+
+      // Thông báo cho các thành viên hiện có trong phòng biết có người mới gia nhập
+      socket.to(roomName).emit('group-call:user-joined', {
+        groupId,
+        userId: currentUserId,
+        displayName: socket.displayName,
+        avatarUrl: socket.avatarUrl
+      });
+    } catch (error) {
+      console.error('❌ Error handling group-call:join:', error.message);
+    }
+  });
+
+  // 9. Group Call Room: Leave Room
+  socket.on('group-call:leave', async (payload) => {
+    try {
+      const { groupId } = payload;
+      if (!groupId) return;
+
+      const roomName = `group-call:${groupId}`;
+      socket.leave(roomName);
+      console.log(`👥 [GROUP CALL] User ${currentUserId} left meeting room ${roomName}`);
+
+      socket.to(roomName).emit('group-call:user-left', {
+        groupId,
+        userId: currentUserId
+      });
+    } catch (error) {
+      console.error('❌ Error handling group-call:leave:', error.message);
+    }
+  });
 };
