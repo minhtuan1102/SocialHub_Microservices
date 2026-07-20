@@ -386,7 +386,7 @@ const Profile = () => {
     return (
         <div className="space-y-8">
             {/* Thẻ thông tin tài khoản Glassmorphism */}
-            <div className="relative bg-white border border-slate-200 rounded-3xl p-8 overflow-hidden shadow-sm">
+            <div className="relative bg-white border border-slate-200 rounded-2xl md:rounded-3xl p-4 md:p-8 overflow-hidden shadow-sm">
                 {/* Background phát quang trang cá nhân */}
                 <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-500/5 rounded-full blur-[96px] pointer-events-none"></div>
 
@@ -554,7 +554,7 @@ const Profile = () => {
                     )}
                 </div>
             ) : (
-                <div className="grid grid-cols-3 gap-3 animate-fadeIn">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3 animate-fadeIn">
                     {userReels.length > 0 ? (
                         userReels.map((reel) => (
                             <ReelThumbnail 

@@ -302,32 +302,45 @@ const Reels = () => {
 
   // Xử lý Thả tim / Bỏ tim Reels
   const handleLikeToggle = async (reelId) => {
-    // Cập nhật Optimistic UI cho mượt
+    // 1. Tìm reel hiện tại trong state trước khi làm Optimistic Update
+    const currentReel = reels.find(r => r.id === reelId);
+    if (!currentReel) return;
+
+    const wasLiked = currentReel.isLikedByMe;
+
+    // 2. Cập nhật Optimistic UI cho mượt
     setReels(prev => prev.map(r => {
       if (r.id === reelId) {
-        const isLiked = !r.isLikedByMe;
         return {
           ...r,
-          isLikedByMe: isLiked,
-          like_count: isLiked ? (r.like_count || 0) + 1 : Math.max((r.like_count || 0) - 1, 0)
+          isLikedByMe: !wasLiked,
+          like_count: !wasLiked ? (r.like_count || 0) + 1 : Math.max((r.like_count || 0) - 1, 0)
         };
       }
       return r;
     }));
 
     try {
-      const targetReel = reels.find(r => r.id === reelId);
-      if (targetReel.isLikedByMe) {
-        // unlike
+      if (wasLiked) {
+        // Nếu đã thích -> Gọi Bỏ thích (UNLIKE)
         await api.delete(`/reels/${reelId}/like`);
       } else {
-        // like
+        // Nếu chưa thích -> Gọi Thích (LIKE)
         await api.post(`/reels/${reelId}/like`);
       }
     } catch (err) {
       console.error("❌ Lỗi tương tác Like Reel:", err.message);
-      // Rollback nếu API lỗi
-      fetchReels(1);
+      // Revert lại trạng thái cũ nếu API lỗi
+      setReels(prev => prev.map(r => {
+        if (r.id === reelId) {
+          return {
+            ...r,
+            isLikedByMe: wasLiked,
+            like_count: currentReel.like_count
+          };
+        }
+        return r;
+      }));
     }
   };
 
@@ -353,24 +366,30 @@ const Reels = () => {
     e.preventDefault();
     if (!commentInput.trim() || !selectedCommentReel || isSubmittingComment) return;
 
+    const contentText = commentInput.trim();
     setIsSubmittingComment(true);
     try {
       const res = await api.post(`/reels/${selectedCommentReel.id}/comments`, {
-        content: commentInput.trim()
+        content: contentText
       });
 
       if (res.data && res.data.success) {
-        // Nạp comment mới vào list
-        setComments(prev => [...prev, res.data.data]);
+        const newCommentObj = res.data.data;
+        // Đưa comment mới lên đầu danh sách
+        setComments(prev => [newCommentObj, ...prev]);
         setCommentInput("");
         
-        // Cập nhật số đếm bình luận ở UI chính
+        // Cập nhật số đếm bình luận ở UI chính & Drawer
         setReels(prev => prev.map(r => {
           if (r.id === selectedCommentReel.id) {
             return { ...r, comment_count: (r.comment_count || 0) + 1 };
           }
           return r;
         }));
+        setSelectedCommentReel(prev => prev ? ({
+          ...prev,
+          comment_count: (prev.comment_count || 0) + 1
+        }) : null);
       }
     } catch (err) {
       console.error("❌ Lỗi tạo bình luận Reel:", err.message);
@@ -394,12 +413,12 @@ const Reels = () => {
   };
 
   return (
-    <div className="w-full flex items-center justify-center min-h-[calc(100vh-6rem)] relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl py-3 border border-white/5 select-none">
+    <div className="w-full flex items-center justify-center min-h-[calc(100vh-8.5rem)] md:min-h-[calc(100vh-6rem)] relative bg-slate-900 md:rounded-3xl overflow-hidden shadow-2xl py-0 md:py-3 border-0 md:border border-white/5 select-none">
       
       {/* Khung chứa các Video cuộn dọc */}
       <div 
         ref={containerRef}
-        className="w-full max-w-[420px] h-[78vh] snap-y snap-mandatory overflow-y-scroll scrollbar-none rounded-2xl border border-white/10 shadow-2xl relative bg-slate-950 flex flex-col"
+        className="w-full md:max-w-[420px] h-[calc(100vh-8.5rem)] md:h-[78vh] snap-y snap-mandatory overflow-y-scroll scrollbar-none md:rounded-2xl border-0 md:border border-white/10 shadow-2xl relative bg-slate-950 flex flex-col"
       >
         {isLoading && reels.length === 0 ? (
           <div className="flex-1 flex flex-col justify-center items-center text-slate-400 space-y-3">

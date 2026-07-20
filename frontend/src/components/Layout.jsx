@@ -70,8 +70,32 @@ const Layout = () => {
                 </div>
             )}
 
-            {/* Sidebar bên trái */}
-            <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col justify-between fixed h-screen">
+            {/* Header Top Bar Mobile (Chỉ hiện trên di động < 768px) */}
+            <header className="md:hidden fixed top-0 inset-x-0 h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between z-40 shadow-sm">
+                <Link to="/" className="flex items-center space-x-2">
+                    <img src="/logo.svg" alt="SocialHub Logo" className="w-8 h-8 object-contain" />
+                    <span className="text-lg font-bold text-slate-800 tracking-tight">SocialHub</span>
+                </Link>
+                <div className="flex items-center space-x-3">
+                    <Link to={`/profile/${user?.id}`} className="flex items-center">
+                        <img
+                            src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
+                            alt="Avatar"
+                            className="w-8 h-8 rounded-full border border-slate-200 object-cover"
+                        />
+                    </Link>
+                    <button
+                        onClick={handleLogout}
+                        className="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-100 transition"
+                        title="Đăng xuất"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
+                </div>
+            </header>
+
+            {/* Sidebar bên trái (Desktop & Tablet >= 768px) */}
+            <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 p-6 flex-col justify-between fixed h-screen z-30">
                 <div className="space-y-8">
                     {/* Brand Logo */}
                     <Link to="/" className="flex items-center space-x-3 group cursor-pointer select-none">
@@ -144,8 +168,39 @@ const Layout = () => {
                 </div>
             </aside>
 
+            {/* Bottom Navigation Bar Mobile (Chỉ hiện trên di động < 768px) */}
+            <nav className="md:hidden fixed bottom-0 inset-x-0 h-16 bg-white border-t border-slate-200 z-40 flex items-center justify-around px-2 shadow-lg">
+                <Link to="/" className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition ${location.pathname === "/" ? "text-blue-600 font-bold" : "text-slate-500"}`}>
+                    <Home className="w-5 h-5" />
+                    <span className="text-[10px] mt-0.5">Feed</span>
+                </Link>
+                <Link to="/friends" className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition ${location.pathname.startsWith("/friends") ? "text-blue-600 font-bold" : "text-slate-500"}`}>
+                    <Users className="w-5 h-5" />
+                    <span className="text-[10px] mt-0.5">Bạn bè</span>
+                </Link>
+                <Link to="/reels" className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition ${location.pathname.startsWith("/reels") ? "text-blue-600 font-bold" : "text-slate-500"}`}>
+                    <Film className="w-5 h-5" />
+                    <span className="text-[10px] mt-0.5">Reels</span>
+                </Link>
+                <Link to="/messages" className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition ${location.pathname.startsWith("/messages") ? "text-blue-600 font-bold" : "text-slate-500"}`}>
+                    <MessageSquare className="w-5 h-5" />
+                    <span className="text-[10px] mt-0.5">Chat</span>
+                </Link>
+                <Link to="/notifications" className={`flex flex-col items-center justify-center w-12 h-12 rounded-xl transition relative ${location.pathname.startsWith("/notifications") ? "text-blue-600 font-bold" : "text-slate-500"}`}>
+                    <div className="relative">
+                        <Bell className="w-5 h-5" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center">
+                                {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-[10px] mt-0.5">Thông báo</span>
+                </Link>
+            </nav>
+
             {/* Nội dung chính bên phải */}
-            <main className={`flex-1 ml-64 mr-64 min-h-screen ${isMessagesPage ? "p-4" : "p-8"}`}>
+            <main className={`flex-1 ml-0 md:ml-64 lg:mr-64 pt-16 pb-20 md:pt-8 md:pb-8 min-h-screen ${isMessagesPage ? "p-2 md:p-4" : "p-3 md:p-8"}`}>
                 <div className={isMessagesPage ? "w-full h-full" : "max-w-4xl mx-auto"}>
                     <Outlet /> {/* Nơi các trang con hiển thị */}
                 </div>
