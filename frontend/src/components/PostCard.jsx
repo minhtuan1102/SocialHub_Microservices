@@ -364,7 +364,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-6">
+        <div className="bg-white border border-slate-200 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm mb-4 md:mb-6">
             {/* Header: Thông tin tác giả - Click để về trang cá nhân */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -495,32 +495,32 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
             )}
 
             {/* Footer tương tác */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-slate-500 text-sm">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-slate-500 text-xs md:text-sm">
                 {/* Nút Thích */}
                 <button
                     onClick={handleLike}
-                    className={`flex items-center space-x-2 hover:text-rose-500 transition cursor-pointer ${isLiked ? "text-rose-600 font-bold" : ""}`}
+                    className={`flex items-center space-x-1 md:space-x-2 hover:text-rose-500 transition cursor-pointer ${isLiked ? "text-rose-600 font-bold" : ""}`}
                 >
-                    <Heart className={`w-5 h-5 ${isLiked ? "fill-rose-600" : ""}`} />
-                    <span>{likeCount} Thích</span>
+                    <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? "fill-rose-600" : ""}`} />
+                    <span>{likeCount} <span className="hidden sm:inline">Thích</span></span>
                 </button>
 
                 {/* Nút Bình luận */}
                 <button
                     onClick={() => setShowComments(!showComments)}
-                    className={`flex items-center space-x-2 hover:text-blue-600 transition cursor-pointer ${showComments ? "text-blue-600 font-bold" : ""}`}
+                    className={`flex items-center space-x-1 md:space-x-2 hover:text-blue-600 transition cursor-pointer ${showComments ? "text-blue-600 font-bold" : ""}`}
                 >
-                    <MessageSquare className="w-5 h-5" />
-                    <span>{commentCount} Bình luận</span>
+                    <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
+                    <span>{commentCount} <span className="hidden sm:inline">Bình luận</span></span>
                 </button>
 
                 {/* Nút Chia sẻ */}
                 <button
                     onClick={() => setShowShareModal(true)}
-                    className="flex items-center space-x-2 hover:text-blue-600 transition cursor-pointer"
+                    className="flex items-center space-x-1 md:space-x-2 hover:text-blue-600 transition cursor-pointer"
                 >
-                    <Share2 className="w-5 h-5" />
-                    <span>{shareCount} Chia sẻ</span>
+                    <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+                    <span>{shareCount} <span className="hidden sm:inline">Chia sẻ</span></span>
                 </button>
             </div>
 

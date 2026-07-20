@@ -177,7 +177,7 @@ const ChatWidget = () => {
     return (
         <>
             {/* Sidebar cố định bên phải (Right Sidebar) hiển thị danh sách bạn bè */}
-            <aside className="w-64 bg-white border-l border-slate-200 p-5 fixed right-0 top-0 h-screen flex flex-col pt-20 shadow-sm">
+            <aside className="hidden lg:flex w-64 bg-white border-l border-slate-200 p-5 fixed right-0 top-0 h-screen flex-col pt-20 shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
                     <div className="flex items-center space-x-2">
                         <Users className="w-5 h-5 text-blue-600" />
