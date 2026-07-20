@@ -18,10 +18,19 @@ const ICE_SERVERS = {
 // Sub-component hiển thị từng ô tham gia cuộc gọi nhóm kiểu Google Meet / Zoom
 const GroupParticipantTile = ({ participant, callType }) => {
     const videoRef = useRef(null);
+    const audioRef = useRef(null);
 
     useEffect(() => {
-        if (videoRef.current && participant.stream) {
-            videoRef.current.srcObject = participant.stream;
+        if (participant.stream) {
+            if (videoRef.current) {
+                videoRef.current.srcObject = participant.stream;
+            }
+            if (audioRef.current) {
+                audioRef.current.srcObject = participant.stream;
+                audioRef.current.play().catch(err => {
+                    console.warn("⚠️ Trình duyệt hoãn autoplay âm thanh nhóm:", err.message);
+                });
+            }
         }
     }, [participant.stream]);
 
@@ -33,6 +42,9 @@ const GroupParticipantTile = ({ participant, callType }) => {
                 playsInline
                 className="w-full h-full object-cover"
             />
+            {/* Thẻ audio ngầm phát tiếng kể cả khi tắt camera */}
+            <audio ref={audioRef} autoPlay playsInline className="hidden" />
+
             {(!participant.stream || callType === 'audio') && (
                 <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center space-y-2">
                     <img
@@ -170,7 +182,8 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
             pc,
             displayName: peerDisplayName,
             avatarUrl: peerAvatarUrl,
-            stream: null
+            stream: null,
+            pendingCandidates: []
         };
 
         return pc;
@@ -332,6 +345,23 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                 if (prev.some(p => p.userId === userId)) return prev;
                 return [...prev, { userId, displayName, avatarUrl, stream: null }];
             });
+
+            // Tự động khởi tạo PeerConnection và gửi SDP Offer tới thành viên mới
+            let serversConfig = ICE_SERVERS;
+            try {
+                const res = await api.get("/conversations/ice-servers");
+                if (res.data?.data?.iceServers) serversConfig = { iceServers: res.data.data.iceServers };
+            } catch (e) {}
+
+            const pc = await createPeerConnectionForGroupMember(userId, displayName, avatarUrl, serversConfig);
+            const rawOffer = await pc.createOffer();
+            const offer = tuneOpusAudioSDP(rawOffer);
+            await pc.setLocalDescription(offer);
+
+            chatSocket.emit("webrtc:offer", {
+                targetUserId: userId,
+                sdp: offer
+            });
         };
 
         const handleGroupUserLeft = ({ userId }) => {
@@ -394,6 +424,18 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                 const peerObj = groupPeersRef.current[senderId];
                 if (peerObj && peerObj.pc) {
                     await peerObj.pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                    
+                    // Flush pending candidates cho group peer
+                    if (peerObj.pendingCandidates && peerObj.pendingCandidates.length > 0) {
+                        while (peerObj.pendingCandidates.length > 0) {
+                            const candidate = peerObj.pendingCandidates.shift();
+                            try {
+                                await peerObj.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                            } catch (e) {
+                                console.warn("⚠️ Lỗi thêm pending candidate nhóm:", e.message);
+                            }
+                        }
+                    }
                 }
             } else {
                 if (String(senderId) !== String(targetTargetId)) return;
@@ -416,8 +458,15 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         const handleIncomingIceCandidate = async ({ senderId, candidate }) => {
             if (isGroup) {
                 const peerObj = groupPeersRef.current[senderId];
-                if (peerObj && peerObj.pc && peerObj.pc.remoteDescription) {
-                    await peerObj.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                if (peerObj && peerObj.pc && peerObj.pc.remoteDescription && peerObj.pc.remoteDescription.type) {
+                    try {
+                        await peerObj.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    } catch (err) {
+                        console.warn("⚠️ Lỗi thêm ICE candidate nhóm:", err.message);
+                    }
+                } else if (peerObj) {
+                    if (!peerObj.pendingCandidates) peerObj.pendingCandidates = [];
+                    peerObj.pendingCandidates.push(candidate);
                 }
             } else {
                 if (String(senderId) !== String(targetTargetId)) return;
