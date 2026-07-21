@@ -201,10 +201,10 @@ const Layout = () => {
             </nav>
 
             {/* Nội dung chính bên phải */}
-            <main className={`flex-1 ml-0 md:ml-64 lg:mr-64 min-h-screen ${
-                isMessagesPage ? "pt-14 pb-16 md:pt-8 md:pb-8 p-2 md:p-4" : 
-                isReelsPage ? "pt-14 pb-16 md:pt-8 md:pb-8 p-0 md:p-8" : 
-                "pt-16 pb-20 md:pt-8 md:pb-8 p-3 sm:p-6 md:p-8"
+            <main className={`flex-1 ml-0 md:ml-64 lg:mr-64 ${
+                isMessagesPage ? "pt-14 pb-16 md:pt-8 md:pb-8 p-2 md:p-4 min-h-screen" : 
+                isReelsPage ? "fixed inset-0 top-14 bottom-16 md:static md:min-h-screen md:pt-8 md:pb-8 p-0 md:p-8" : 
+                "pt-16 pb-20 md:pt-8 md:pb-8 p-3 sm:p-6 md:p-8 min-h-screen"
             }`}>
                 <div className={isMessagesPage ? "w-full h-full" : isReelsPage ? "w-full h-full flex justify-center items-center" : "max-w-4xl mx-auto"}>
                     <Outlet /> {/* Nơi các trang con hiển thị */}

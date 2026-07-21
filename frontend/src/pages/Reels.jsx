@@ -428,10 +428,10 @@ const Reels = () => {
   };
 
   return (
-    <div className="w-full flex items-center justify-center h-[calc(100vh-7.5rem)] md:h-[calc(100vh-6rem)] relative bg-slate-900 md:rounded-3xl overflow-hidden shadow-2xl py-0 md:py-3 border-0 md:border border-white/5 select-none">
+    <div className="w-full h-full flex items-center justify-center relative bg-slate-900 md:rounded-3xl overflow-hidden shadow-2xl py-0 md:py-3 border-0 md:border border-white/5 select-none">
       
       {/* Frame bọc ngoài cố định không cuộn */}
-      <div className="w-full md:max-w-[420px] h-[calc(100vh-7.5rem)] md:h-[78vh] md:rounded-2xl border-0 md:border border-white/10 shadow-2xl relative bg-slate-950 flex flex-col overflow-hidden">
+      <div className="w-full h-full md:max-w-[420px] md:h-[78vh] md:rounded-2xl border-0 md:border border-white/10 shadow-2xl relative bg-slate-950 flex flex-col overflow-hidden">
         
         {/* Khung chứa các Video cuộn dọc */}
         <div 
