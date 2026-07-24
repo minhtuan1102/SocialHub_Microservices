@@ -1,13 +1,16 @@
 import axios from "axios";
 
 const LOCAL_BASE = "http://localhost:8080";
-const CLOUD_BASE = import.meta.env.VITE_CLOUD_API_URL || "https://api-local.socialhubzz.cloud";
+const CLOUD_BASE = import.meta.env.VITE_API_URL || import.meta.env.VITE_CLOUD_API_URL || "https://api-local.socialhubzz.cloud";
 
-let currentOrigin = LOCAL_BASE;
+const isHttpsEnvironment = typeof window !== "undefined" && window.location.protocol === "https:";
+let currentOrigin = isHttpsEnvironment ? CLOUD_BASE : LOCAL_BASE;
 let isCheckingHealth = false;
 
 const getApiUrl = (origin) => {
-    return origin.endsWith('/api') ? origin : `${origin}/api`;
+    if (!origin) return "/api";
+    const cleanOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+    return cleanOrigin.endsWith('/api') ? cleanOrigin : `${cleanOrigin}/api`;
 };
 
 const api = axios.create({
@@ -29,9 +32,15 @@ export const switchServer = (newOrigin) => {
 };
 
 // 🌟 THUẬT TOÁN HEALTH CHECK PING CHUẨN XÁC 100%:
-// Chỉ chuyển vùng server khi Ping thực tế tới endpoint /health thất bại (Server down hẳn).
-// Ứng dụng sẽ không bao giờ bị nhảy nhầm server do lỗi API 401, 404, hay 500.
+// Trên HTTPS (Vercel), trình duyệt chặn gọi HTTP localhost (Mixed Content), nên mặc định giữ nguyên CLOUD_BASE.
 export const checkServerHealth = async () => {
+    if (isHttpsEnvironment) {
+        if (currentOrigin !== CLOUD_BASE) {
+            switchServer(CLOUD_BASE);
+        }
+        return;
+    }
+
     if (isCheckingHealth) return;
     isCheckingHealth = true;
 
@@ -70,15 +79,15 @@ export const checkServerHealth = async () => {
     }
 };
 
-// Kích hoạt Ping kiểm tra tín hiệu ngay khi nạp trang
-checkServerHealth();
-
-// Chạy lại Ping định kỳ mỗi 8s nếu đang ở Cloud Server để tự động về lại Localhost ngay khi Docker khởi động xong
-setInterval(() => {
-    if (currentOrigin !== LOCAL_BASE) {
-        checkServerHealth();
-    }
-}, 8000);
+// Kích hoạt Ping kiểm tra tín hiệu ngay khi nạp trang (chỉ với môi trường HTTP Local)
+if (!isHttpsEnvironment) {
+    checkServerHealth();
+    setInterval(() => {
+        if (currentOrigin !== LOCAL_BASE) {
+            checkServerHealth();
+        }
+    }, 8000);
+}
 
 api.interceptors.request.use(
     (config) => {
