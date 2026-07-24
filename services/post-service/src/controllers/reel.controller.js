@@ -1,6 +1,6 @@
 import prisma from '../config/db.js';
-import { successResponse, errorResponse } from '../utils/response.js';
-import { getUserProfile, validateMediaIds } from '../utils/api.js';
+import {successResponse, errorResponse} from '../utils/response.js';
+import {getUserProfile, validateMediaIds} from '../utils/api.js';
 
 const handleError = (res, error, defaultMessage = 'Internal Server Error') => {
   if (error.statusCode) {
@@ -13,7 +13,7 @@ const handleError = (res, error, defaultMessage = 'Internal Server Error') => {
 // 1. Tạo Reel mới
 export const createReel = async (req, res) => {
   try {
-    const { caption, mediaId } = req.body;
+    const {caption, mediaId} = req.body;
     const authorId = req.user.id;
     const token = req.headers.authorization;
 
@@ -55,7 +55,7 @@ export const getReels = async (req, res) => {
 
     const total = await prisma.reel.count();
     const reels = await prisma.reel.findMany({
-      orderBy: { created_at: 'desc' },
+      orderBy: {created_at: 'desc'},
       take: limit,
       skip: offset
     });
@@ -63,7 +63,7 @@ export const getReels = async (req, res) => {
     const reelsWithDetails = await Promise.all(reels.map(async (reel) => {
       // Lấy profile tác giả
       const author = await getUserProfile(reel.author_id, token);
-      
+
       // Kiểm tra user hiện tại đã like reel này chưa
       const like = await prisma.reelLike.findUnique({
         where: {
@@ -100,8 +100,8 @@ export const getUserReels = async (req, res) => {
     const token = req.headers.authorization;
 
     const reels = await prisma.reel.findMany({
-      where: { author_id: userId },
-      orderBy: { created_at: 'desc' }
+      where: {author_id: userId},
+      orderBy: {created_at: 'desc'}
     });
 
     const author = await getUserProfile(userId, token);
@@ -133,15 +133,15 @@ export const getUserReels = async (req, res) => {
 export const incrementReelView = async (req, res) => {
   try {
     const id = req.params.id;
-    
+
     const updatedReel = await prisma.reel.update({
-      where: { id },
+      where: {id},
       data: {
-        view_count: { increment: 1 }
+        view_count: {increment: 1}
       }
     });
 
-    return successResponse(res, 200, { view_count: updatedReel.view_count });
+    return successResponse(res, 200, {view_count: updatedReel.view_count});
   } catch (error) {
     return handleError(res, error, 'Increment Reel View Error');
   }
@@ -154,7 +154,7 @@ export const likeReel = async (req, res) => {
     const userId = req.user.id;
 
     // Kiểm tra reel có tồn tại ko
-    const reelExists = await prisma.reel.findUnique({ where: { id: reelId } });
+    const reelExists = await prisma.reel.findUnique({where: {id: reelId}});
     if (!reelExists) {
       return errorResponse(res, 404, 'Reel not found');
     }
@@ -177,13 +177,13 @@ export const likeReel = async (req, res) => {
     if (isNewLike) {
       // Tăng like_count
       const updatedReel = await prisma.reel.update({
-        where: { id: reelId },
-        data: { like_count: { increment: 1 } }
+        where: {id: reelId},
+        data: {like_count: {increment: 1}}
       });
       currentLikeCount = updatedReel.like_count;
     }
 
-    return successResponse(res, 200, { like_count: currentLikeCount });
+    return successResponse(res, 200, {like_count: currentLikeCount});
   } catch (error) {
     return handleError(res, error, 'Like Reel Error');
   }
@@ -195,7 +195,7 @@ export const unlikeReel = async (req, res) => {
     const reelId = req.params.id;
     const userId = req.user.id;
 
-    const reelExists = await prisma.reel.findUnique({ where: { id: reelId } });
+    const reelExists = await prisma.reel.findUnique({where: {id: reelId}});
     if (!reelExists) {
       return errorResponse(res, 404, 'Reel not found');
     }
@@ -221,13 +221,13 @@ export const unlikeReel = async (req, res) => {
       // Giảm like_count (không để âm)
       const newLikeCount = Math.max((reelExists.like_count || 0) - 1, 0);
       const updatedReel = await prisma.reel.update({
-        where: { id: reelId },
-        data: { like_count: newLikeCount }
+        where: {id: reelId},
+        data: {like_count: newLikeCount}
       });
       currentLikeCount = updatedReel.like_count;
     }
 
-    return successResponse(res, 200, { like_count: currentLikeCount });
+    return successResponse(res, 200, {like_count: currentLikeCount});
   } catch (error) {
     return handleError(res, error, 'Unlike Reel Error');
   }
@@ -240,8 +240,8 @@ export const getReelComments = async (req, res) => {
     const token = req.headers.authorization;
 
     const comments = await prisma.reelComment.findMany({
-      where: { reel_id: reelId },
-      orderBy: { created_at: 'desc' }
+      where: {reel_id: reelId},
+      orderBy: {created_at: 'desc'}
     });
 
     const commentsWithAuthor = await Promise.all(comments.map(async (comment) => {
@@ -262,7 +262,7 @@ export const getReelComments = async (req, res) => {
 export const createReelComment = async (req, res) => {
   try {
     const reelId = req.params.id;
-    const { content } = req.body;
+    const {content} = req.body;
     const authorId = req.user.id;
     const token = req.headers.authorization;
 
@@ -271,7 +271,7 @@ export const createReelComment = async (req, res) => {
     }
 
     // Kiểm tra Reel tồn tại
-    const reelExists = await prisma.reel.findUnique({ where: { id: reelId } });
+    const reelExists = await prisma.reel.findUnique({where: {id: reelId}});
     if (!reelExists) {
       return errorResponse(res, 404, 'Reel not found');
     }
@@ -287,8 +287,8 @@ export const createReelComment = async (req, res) => {
 
     // Cập nhật comment_count trong Reel
     await prisma.reel.update({
-      where: { id: reelId },
-      data: { comment_count: { increment: 1 } }
+      where: {id: reelId},
+      data: {comment_count: {increment: 1}}
     });
 
     const author = await getUserProfile(authorId, token);
@@ -309,13 +309,13 @@ export const getReelById = async (req, res) => {
     const token = req.headers.authorization;
     const currentUserId = req.user.id;
 
-    const reel = await prisma.reel.findUnique({ where: { id } });
+    const reel = await prisma.reel.findUnique({where: {id}});
     if (!reel) {
       return errorResponse(res, 404, 'Reel not found');
     }
 
     const author = await getUserProfile(reel.author_id, token);
-    
+
     // Kiểm tra xem user hiện tại đã like reel này chưa
     const like = await prisma.reelLike.findUnique({
       where: {

@@ -134,15 +134,16 @@ Nếu bạn có một tên miền (domain) đã trỏ về Cloudflare (ví dụ:
    - Chọn hệ điều hành máy local của bạn (ví dụ: Windows).
    - Sao chép lệnh cài đặt connector hiển thị trên màn hình (đã chứa sẵn token bí mật của tunnel) và chạy bằng quyền Administrator dưới máy local của bạn.
    - Khi trạng thái connector chuyển sang **Active** (màu xanh lá), nhấn **Next**.
-6. **Cấu hình Public Hostname (Định tuyến API)**:
-   - **Subdomain**: Nhập subdomain mong muốn (ví dụ: `api`).
-   - **Domain**: Chọn tên miền của bạn từ danh sách (ví dụ: `yourdomain.com`).
-   - **Path**: Để trống.
-   - **Service**: 
-     - *Type*: Chọn `HTTP`.
-     - *URL*: Nhập `localhost:8080`.
-   - Nhấp vào **Save tunnel**.
-7. Bây giờ, mọi yêu cầu gửi tới `https://api.yourdomain.com` sẽ được Cloudflare định tuyến an toàn về API Gateway chạy tại `localhost:8080` trên máy tính của bạn. URL này là cố định và không thay đổi.
+6. **Cấu hình Public Hostname (Định tuyến API & Media Service Bypass Gateway)**:
+   - **Hostname 1 (API Gateway)**:
+     - *Subdomain*: `api-local` (hoặc `api`).
+     - *Domain*: `yourdomain.com` (ví dụ `socialhubzz.cloud`).
+     - *Service Type*: `HTTP` | *URL*: `gateway:8000` (hoặc `localhost:8080`).
+   - **Hostname 2 (Media Service Direct Bypass - Tối ưu 100% mượt video Reels)**:
+     - *Subdomain*: `media-local` (hoặc `media`).
+     - *Domain*: `yourdomain.com` (ví dụ `socialhubzz.cloud`).
+     - *Service Type*: `HTTP` | *URL*: `media-service:5000` (hoặc `localhost:5005`).
+   - Nhấn **Save tunnel**.
 
 ---
 
@@ -152,9 +153,13 @@ Sau khi đã có đường hầm tunnel (ở Cách A hoặc Cách B):
 
 1. Đăng nhập vào Dashboard của **Vercel** -> Chọn dự án `socialhub-frontend` của bạn.
 2. Di chuyển sang tab **Settings** -> Chọn **Environment Variables** ở cột bên trái.
-3. Thêm một biến môi trường mới:
-   - **Key**: `VITE_API_URL`
-   - **Value**: Dán đường dẫn tunnel của bạn vào kèm theo `/api` (ví dụ: `https://xxxxx.trycloudflare.com/api` hoặc `https://api.yourdomain.com/api`).
+3. Thêm 2 biến môi trường mới:
+   - **Biến 1 (API Gateway)**:
+     - **Key**: `VITE_API_URL`
+     - **Value**: `https://api-local.yourdomain.com/api` (hoặc URL TryCloudflare)
+   - **Biến 2 (Media Service Direct Bypass - Giúp Vercel xem Reels không bị nghẽn Gateway)**:
+     - **Key**: `VITE_MEDIA_URL`
+     - **Value**: `https://media-local.yourdomain.com` (hoặc URL TryCloudflare trỏ tới port 5005)
 4. Click **Save**.
 5. Di chuyển sang tab **Deployments**, tìm bản build gần nhất và click chọn **Redeploy** để Vercel rebuild lại frontend với biến môi trường mới.
 

@@ -1,12 +1,12 @@
 if (process.env.ENVIRONMENT === 'production') {
-  console.log = () => {};
-  console.info = () => {};
-  console.debug = () => {};
+  console.log = () => { };
+  console.info = () => { };
+  console.debug = () => { };
 }
 
 import http from 'http';
 import app from './app.js';
-import { config } from './config/index.js';
+import {config} from './config/index.js';
 import redis from './config/redis.js';
 import httpProxy from 'http-proxy';
 
@@ -41,10 +41,10 @@ const startServer = async () => {
     server.on('upgrade', (req, socket, head) => {
       if (req.url && req.url.startsWith('/notification/socket.io/')) {
         req.url = req.url.replace(/^\/notification/, '');
-        wsProxy.ws(req, socket, head, { target: config.NOTIFICATION_SERVICE_URL });
+        wsProxy.ws(req, socket, head, {target: config.NOTIFICATION_SERVICE_URL});
       } else if (req.url && req.url.startsWith('/chat/socket.io/')) {
         req.url = req.url.replace(/^\/chat/, '');
-        wsProxy.ws(req, socket, head, { target: config.CHAT_SERVICE_URL });
+        wsProxy.ws(req, socket, head, {target: config.CHAT_SERVICE_URL});
       } else {
         console.warn(`[WARN] WS Upgrade request received for unsupported path: ${req.url}`);
         socket.end();

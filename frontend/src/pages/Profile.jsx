@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import {useState, useEffect, useRef} from "react";
+import {useParams, useNavigate} from "react-router-dom";
 import api from "../services/api";
 import PostCard from "../components/PostCard";
-import { useAuth } from "../context/AuthContext";
-import { Loader, Calendar, Mail, FileText, UserPlus, UserCheck, UserMinus, MessageSquare, Edit3, Camera, Save, X, Film, Clock } from "lucide-react";
+import {useAuth} from "../context/AuthContext";
+import {Loader, Calendar, Mail, FileText, UserPlus, UserCheck, UserMinus, MessageSquare, Edit3, Camera, Save, X, Film, Clock} from "lucide-react";
 import imageCompression from "browser-image-compression";
-import { formatRelativeTime } from "../utils/dateUtils";
+import {formatRelativeTime} from "../utils/dateUtils";
 
 // Modal chỉnh sửa profile
-const EditProfileModal = ({ profileUser, onClose, onProfileUpdated }) => {
+const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
     const [displayName, setDisplayName] = useState(profileUser.displayName || "");
     const [bio, setBio] = useState(profileUser.bio || "");
     const [avatarFile, setAvatarFile] = useState(null);
@@ -56,7 +56,7 @@ const EditProfileModal = ({ profileUser, onClose, onProfileUpdated }) => {
                 formData.append("file", fileToUpload);
                 console.log("[PROFILE_UPDATE] Uploading avatar file:", avatarFile.name);
                 const uploadRes = await api.post("/media/upload", formData);
-                
+
                 if (uploadRes.data && uploadRes.data.id) {
                     uploadedAvatarUrl = `/media/file/${uploadRes.data.id}`;
                     console.log("[PROFILE_UPDATE] Avatar uploaded successfully, relative path:", uploadedAvatarUrl);
@@ -188,7 +188,7 @@ const EditProfileModal = ({ profileUser, onClose, onProfileUpdated }) => {
     );
 };
 
-const ReelThumbnail = ({ reel, onClick }) => {
+const ReelThumbnail = ({reel, onClick}) => {
     const [videoSrc, setVideoSrc] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -201,7 +201,7 @@ const ReelThumbnail = ({ reel, onClick }) => {
 
         const fetchThumbnailBlob = async () => {
             try {
-                const res = await api.get(`/media/file/${videoId}`, { responseType: "blob" });
+                const res = await api.get(`/media/file/${videoId}`, {responseType: "blob"});
                 objectUrl = URL.createObjectURL(res.data);
                 setVideoSrc(objectUrl);
             } catch (err) {
@@ -221,7 +221,7 @@ const ReelThumbnail = ({ reel, onClick }) => {
     }, [reel.media_ids]);
 
     return (
-        <div 
+        <div
             onClick={onClick}
             className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-sm group cursor-pointer hover:scale-[1.01] hover:shadow-md transition duration-200"
         >
@@ -230,11 +230,11 @@ const ReelThumbnail = ({ reel, onClick }) => {
                     <Loader className="w-5 h-5 text-blue-500 animate-spin" />
                 </div>
             ) : videoSrc ? (
-                <video 
-                    src={videoSrc} 
-                    muted 
-                    playsInline 
-                    className="w-full h-full object-cover animate-fadeIn" 
+                <video
+                    src={videoSrc}
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover animate-fadeIn"
                 />
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-500 text-[10px] italic">
@@ -251,16 +251,16 @@ const ReelThumbnail = ({ reel, onClick }) => {
 };
 
 const Profile = () => {
-    const { id } = useParams(); // Lấy ID người dùng từ thanh địa chỉ /profile/:id
+    const {id} = useParams(); // Lấy ID người dùng từ thanh địa chỉ /profile/:id
     const navigate = useNavigate();
-    const { user: loggedInUser, setUser } = useAuth();
+    const {user: loggedInUser, setUser} = useAuth();
 
     const [profileUser, setProfileUser] = useState(null);
     const [userPosts, setUserPosts] = useState([]);
     const [userReels, setUserReels] = useState([]);
     const [activeTab, setActiveTab] = useState("posts"); // "posts" | "reels"
     const [isLoading, setIsLoading] = useState(true);
-    const [relation, setRelation] = useState({ status: "none", requestId: null });
+    const [relation, setRelation] = useState({status: "none", requestId: null});
     const [showEditModal, setShowEditModal] = useState(false);
 
     const isOwnProfile = loggedInUser?.id === id;
@@ -289,11 +289,11 @@ const Profile = () => {
             const uploadRes = await api.post("/media/upload", formData);
             if (uploadRes.data && uploadRes.data.id) {
                 const newCoverUrl = `${api.defaults.baseURL}/media/file/${uploadRes.data.id}?variant=original`;
-                setProfileUser(prev => ({ ...prev, coverUrl: newCoverUrl }));
+                setProfileUser(prev => ({...prev, coverUrl: newCoverUrl}));
                 if (loggedInUser?.id === profileUser.id && setUser) {
-                    setUser({ ...loggedInUser, coverUrl: newCoverUrl });
+                    setUser({...loggedInUser, coverUrl: newCoverUrl});
                 }
-                await api.put(`/users/${profileUser.id}`, { coverUrl: newCoverUrl }).catch(() => {});
+                await api.put(`/users/${profileUser.id}`, {coverUrl: newCoverUrl}).catch(() => { });
             }
         } catch (err) {
             console.error("❌ Lỗi tải lên ảnh bìa:", err);
@@ -306,9 +306,9 @@ const Profile = () => {
     // A. Hàm gửi yêu cầu kết bạn
     const handleSendRequest = async () => {
         try {
-            const res = await api.post("/friends/request", { toUserId: id });
+            const res = await api.post("/friends/request", {toUserId: id});
             if (res.data && res.data.success) {
-                setRelation({ status: "pending_sent", requestId: res.data.data.id });
+                setRelation({status: "pending_sent", requestId: res.data.data.id});
             }
         } catch (err) {
             alert(err.response?.data?.message || "Lỗi gửi yêu cầu!");
@@ -320,7 +320,7 @@ const Profile = () => {
         try {
             const res = await api.put(`/friends/requests/${relation.requestId}/accept`);
             if (res.data && res.data.success) {
-                setRelation({ status: "friends", requestId: null });
+                setRelation({status: "friends", requestId: null});
                 window.dispatchEvent(new Event("friends-updated"));
             }
         } catch (err) {
@@ -333,7 +333,7 @@ const Profile = () => {
         try {
             const res = await api.put(`/friends/requests/${relation.requestId}/reject`);
             if (res.data && res.data.success) {
-                setRelation({ status: "none", requestId: null });
+                setRelation({status: "none", requestId: null});
                 window.dispatchEvent(new Event("friends-updated"));
             }
         } catch (err) {
@@ -347,7 +347,7 @@ const Profile = () => {
         try {
             const res = await api.delete(`/friends/${id}`);
             if (res.data && res.data.success) {
-                setRelation({ status: "none", requestId: null });
+                setRelation({status: "none", requestId: null});
                 window.dispatchEvent(new Event("friends-updated"));
             }
         } catch (err) {
@@ -575,22 +575,20 @@ const Profile = () => {
             <div className="flex border-b border-slate-200 select-none">
                 <button
                     onClick={() => setActiveTab("posts")}
-                    className={`flex items-center space-x-2 px-6 py-3 font-semibold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer ${
-                        activeTab === "posts"
+                    className={`flex items-center space-x-2 px-6 py-3 font-semibold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer ${activeTab === "posts"
                             ? "border-blue-600 text-blue-600 animate-fadeIn"
                             : "border-transparent text-slate-500 hover:text-slate-800"
-                    }`}
+                        }`}
                 >
                     <FileText className="w-4 h-4" />
                     <span>Bài đăng ({userPosts.length})</span>
                 </button>
                 <button
                     onClick={() => setActiveTab("reels")}
-                    className={`flex items-center space-x-2 px-6 py-3 font-semibold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer ${
-                        activeTab === "reels"
+                    className={`flex items-center space-x-2 px-6 py-3 font-semibold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer ${activeTab === "reels"
                             ? "border-blue-600 text-blue-600 animate-fadeIn"
                             : "border-transparent text-slate-500 hover:text-slate-800"
-                    }`}
+                        }`}
                 >
                     <Film className="w-4 h-4" />
                     <span>Thước phim ({userReels.length})</span>
@@ -615,12 +613,12 @@ const Profile = () => {
                                     setUserPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
                                 };
                                 return (
-                                    <PostCard 
-                                        key={post.id} 
-                                        post={post} 
-                                        currentUserId={loggedInUser?.id} 
-                                        onPostShared={handlePostShared} 
-                                        onPostDeleted={handlePostDeleted} 
+                                    <PostCard
+                                        key={post.id}
+                                        post={post}
+                                        currentUserId={loggedInUser?.id}
+                                        onPostShared={handlePostShared}
+                                        onPostDeleted={handlePostDeleted}
                                         onPostUpdated={handlePostUpdated}
                                     />
                                 );
@@ -636,10 +634,10 @@ const Profile = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3 animate-fadeIn">
                     {userReels.length > 0 ? (
                         userReels.map((reel) => (
-                            <ReelThumbnail 
-                                key={reel.id} 
-                                reel={reel} 
-                                onClick={() => navigate("/reels")} 
+                            <ReelThumbnail
+                                key={reel.id}
+                                reel={reel}
+                                onClick={() => navigate("/reels")}
                             />
                         ))
                     ) : (
@@ -658,7 +656,7 @@ const Profile = () => {
                     onProfileUpdated={(updatedUser) => {
                         setProfileUser(updatedUser);
                         // Cập nhật lên AuthContext - merge đầy đủ tất cả fields từ server
-                        setUser(prev => ({ ...prev, ...updatedUser }));
+                        setUser(prev => ({...prev, ...updatedUser}));
                     }}
                 />
             )}

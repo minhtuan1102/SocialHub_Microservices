@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import {useState, useEffect, useRef} from "react";
+import {useSearchParams} from "react-router-dom";
+import {useAuth} from "../context/AuthContext";
 import api from "../services/api";
-import { 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  Volume2, 
-  VolumeX, 
-  Plus, 
-  Loader, 
-  Send, 
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Volume2,
+  VolumeX,
+  Plus,
+  Loader,
+  Send,
   X,
   Play,
   Pause,
@@ -30,7 +30,7 @@ const formatTime = (seconds) => {
 };
 
 // Component con hiển thị từng Video Reel đơn lẻ
-const ReelItem = ({ reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenComments, onShare }) => {
+const ReelItem = ({reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenComments, onShare}) => {
   const videoRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
@@ -98,7 +98,7 @@ const ReelItem = ({ reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenCom
           }}
           onPlaySuccess={() => {
             setIsPlaying(true);
-            api.post(`/reels/${reel.id}/view`).catch(() => {});
+            api.post(`/reels/${reel.id}/view`).catch(() => { });
           }}
           onPlayError={() => setIsPlaying(false)}
         />
@@ -162,11 +162,10 @@ const ReelItem = ({ reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenCom
         <div className="flex flex-col items-center text-center space-y-1">
           <button
             onClick={() => onLikeToggle(reel.id)}
-            className={`p-3 rounded-full backdrop-blur-md border transition duration-300 cursor-pointer shadow-lg active:scale-90 ${
-              reel.isLikedByMe
+            className={`p-3 rounded-full backdrop-blur-md border transition duration-300 cursor-pointer shadow-lg active:scale-90 ${reel.isLikedByMe
                 ? "bg-red-500/90 text-white border-red-500"
                 : "bg-black/40 text-white border-white/10 hover:bg-black/60"
-            }`}
+              }`}
           >
             <Heart className={`w-5 h-5 ${reel.isLikedByMe ? "fill-white" : ""}`} />
           </button>
@@ -198,14 +197,14 @@ const ReelItem = ({ reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenCom
 
       {/* Thanh Scrubber / Tua video chuẩn Facebook Reels ở đáy */}
       <div className="absolute bottom-0 left-0 right-0 z-20 px-3 pb-1 pt-3 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col space-y-1 pointer-events-auto">
-        <div 
+        <div
           className="relative w-full h-1.5 hover:h-2.5 bg-white/20 hover:bg-white/30 rounded-full cursor-pointer transition-all duration-150 group"
           onClick={handleSeek}
         >
           {/* Thanh tiến trình đã phát */}
-          <div 
+          <div
             className="h-full bg-violet-500 rounded-full relative group-hover:bg-violet-400"
-            style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+            style={{width: `${duration ? (currentTime / duration) * 100 : 0}%`}}
           >
             {/* Núm tròn chỉ báo khi hover */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -377,7 +376,7 @@ const Reels = () => {
     setSelectedCommentReel(reel);
     setCommentDrawerOpen(true);
     setComments([]);
-    
+
     // Tải danh sách bình luận
     try {
       const res = await api.get(`/reels/${reel.id}/comments`);
@@ -406,11 +405,11 @@ const Reels = () => {
         // Đưa comment mới lên đầu danh sách
         setComments(prev => [newCommentObj, ...prev]);
         setCommentInput("");
-        
+
         // Cập nhật số đếm bình luận ở UI chính & Drawer
         setReels(prev => prev.map(r => {
           if (r.id === selectedCommentReel.id) {
-            return { ...r, comment_count: (r.comment_count || 0) + 1 };
+            return {...r, comment_count: (r.comment_count || 0) + 1};
           }
           return r;
         }));
@@ -442,7 +441,7 @@ const Reels = () => {
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center relative select-none py-2 md:py-0">
-      
+
       {/* Header bar trên Reels Player */}
       <div className="w-full max-w-[420px] flex justify-between items-center mb-2.5 px-2 sm:px-0">
         <h2 className="text-lg md:text-xl font-extrabold text-slate-800 tracking-tight flex items-center space-x-2">
@@ -460,9 +459,9 @@ const Reels = () => {
 
       {/* Frame bọc ngoài cố định không cuộn */}
       <div className="w-full h-[calc(100vh-11rem)] md:max-w-[420px] md:h-[78vh] md:rounded-2xl border-0 md:border border-slate-800 shadow-2xl relative bg-slate-950 flex flex-col overflow-hidden">
-        
+
         {/* Khung chứa các Video cuộn dọc */}
-        <div 
+        <div
           ref={containerRef}
           className="w-full h-full snap-y snap-mandatory overflow-y-scroll scrollbar-none flex flex-col"
         >
@@ -475,9 +474,9 @@ const Reels = () => {
             reels.map((reel, index) => {
               const isAdjacent = Math.abs(index - activeReelIndex) <= 1;
               return (
-                <div 
-                  key={reel.id} 
-                  data-index={index} 
+                <div
+                  key={reel.id}
+                  data-index={index}
                   className="w-full h-full shrink-0 snap-start"
                 >
                   {isAdjacent ? (
@@ -509,14 +508,14 @@ const Reels = () => {
         {/* Ngăn kéo Bình luận (Comment Drawer) trượt lên trên khung cố định, nằm ngoài scroll container */}
         {commentDrawerOpen && selectedCommentReel && (
           <div className="absolute inset-x-0 bottom-0 h-[65%] bg-slate-900/95 backdrop-blur-md rounded-t-2xl z-50 flex flex-col border-t border-white/10 shadow-2xl animate-slideUp">
-            
+
             {/* Header Drawer */}
             <div className="flex justify-between items-center px-4 py-3 border-b border-white/10">
               <span className="text-xs font-bold text-white flex items-center space-x-1.5">
                 <MessageSquareCode className="w-4 h-4 text-violet-500" />
                 <span>Bình luận ({selectedCommentReel.comment_count || 0})</span>
               </span>
-              <button 
+              <button
                 onClick={() => setCommentDrawerOpen(false)}
                 className="p-1 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition cursor-pointer"
               >
@@ -529,7 +528,7 @@ const Reels = () => {
               {comments.length > 0 ? (
                 comments.map((comment, i) => (
                   <div key={comment.id || i} className="flex items-start space-x-2.5">
-                    <img 
+                    <img
                       src={comment.author?.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.author_id}`}
                       className="w-7 h-7 rounded-full object-cover border border-white/10 mt-0.5"
                       alt="Avatar"
@@ -557,7 +556,7 @@ const Reels = () => {
                 disabled={isSubmittingComment}
                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-550 focus:outline-none focus:border-violet-500 transition disabled:opacity-50"
               />
-              <button 
+              <button
                 type="submit"
                 disabled={isSubmittingComment || !commentInput.trim()}
                 className="p-2.5 bg-violet-600 disabled:opacity-50 hover:bg-violet-750 text-white rounded-xl cursor-pointer transition active:scale-95 shadow-md shadow-violet-600/10"
@@ -599,7 +598,7 @@ const Reels = () => {
             // Cập nhật số lượt share tăng lên 1 trên UI
             setReels(prev => prev.map(r => {
               if (r.id === selectedSharePost.id) {
-                return { ...r, share_count: (r.share_count || 0) + 1 };
+                return {...r, share_count: (r.share_count || 0) + 1};
               }
               return r;
             }));

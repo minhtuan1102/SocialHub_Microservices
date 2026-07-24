@@ -10,6 +10,12 @@ export const rateLimiter = (limit = 60, windowSeconds = 60) => {
     try {
       const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
       const endpoint = req.path;
+
+      // Bypass rate limiting for high-frequency media streaming endpoints
+      if (endpoint.startsWith('/media/hls/') || endpoint.startsWith('/media/file/')) {
+        return next();
+      }
+
       const key = `ratelimit:${ip}:${endpoint}`;
 
       // Increment request count for this IP + Endpoint

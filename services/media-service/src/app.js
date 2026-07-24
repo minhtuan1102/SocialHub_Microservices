@@ -11,16 +11,22 @@ app.set('etag', false);
 
 // Middlewares
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: {policy: "cross-origin"}
 }));
-// Configure CORS for direct browser upload
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Authorization', 'Content-Type'],
-  credentials: true
-};
-app.use(cors(corsOptions));
+// Configure CORS for direct browser media streaming & upload
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'ngrok-skip-browser-warning',
+    'Range',
+    'x-user-id'
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type', 'Content-Range', 'Accept-Ranges'],
+  credentials: false
+}));
 if (process.env.ENVIRONMENT !== 'production') {
   app.use(morgan('dev'));
 } else {
@@ -46,25 +52,25 @@ app.use('/', mediaRoutes);
 
 // 404 Handler
 app.use((req, res, next) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({error: 'Route not found'});
 });
 
 // Global Error Handler
 app.use((err, req, res, next) => {
   // Lỗi từ Multer
   if (err.name === 'MulterError' && err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ error: 'File too large (max 10MB)' });
+    return res.status(413).json({error: 'File too large (max 10MB)'});
   }
 
   // Lỗi Custom của chúng ta (kế thừa từ AppError ở error.js)
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
-  
+
   if (statusCode === 500) {
     console.error(err); // Log lỗi server
   }
 
-  res.status(statusCode).json({ error: message });
+  res.status(statusCode).json({error: message});
 });
 
 export default app;
