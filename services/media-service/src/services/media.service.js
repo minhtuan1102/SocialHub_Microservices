@@ -6,6 +6,32 @@ import { Media } from '../models/media.model.js';
 import { config } from '../config/index.js';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/error.js';
 
+// In-memory cache cho metadata media để tránh query MongoDB lặp lại khi stream HLS segments
+const mediaCache = new Map();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút
+const CACHE_MAX_SIZE = 500;
+
+const getCachedMedia = async (id) => {
+  const cached = mediaCache.get(id);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+  const media = await Media.findById(id).lean();
+  if (media) {
+    // Evict oldest entries if cache is full
+    if (mediaCache.size >= CACHE_MAX_SIZE) {
+      const oldestKey = mediaCache.keys().next().value;
+      mediaCache.delete(oldestKey);
+    }
+    mediaCache.set(id, { data: media, timestamp: Date.now() });
+  }
+  return media;
+};
+
+const invalidateCache = (id) => {
+  mediaCache.delete(id);
+};
+
 export const mediaService = {
   uploadMedia: async (file, userId, fileCategory) => {
     if (!file) throw new BadRequestError('No file uploaded');
@@ -150,6 +176,7 @@ export const mediaService = {
 
     await minioService.deleteFile(media.objectKey);
     await Media.findByIdAndDelete(media._id);
+    invalidateCache(id); // Xóa cache khi xóa media
   },
 
   getBatchUrls: async (mediaIds) => {
@@ -177,12 +204,13 @@ export const mediaService = {
   },
 
   getHlsMasterPlaylist: async (id) => {
-    const media = await Media.findById(id);
+    const media = await getCachedMedia(id);
     if (!media) throw new NotFoundError('Media not found');
 
     if (!media.hlsReady || !media.hlsMasterKey) {
       // Kích hoạt tự động tạo HLS ngầm cho video cũ chưa có HLS (nếu tiến trình chưa chạy)
-      if (media.mimeType && media.mimeType.startsWith('video/') && !hlsService.isProcessing(media._id.toString())) {
+      const mediaId = media._id.toString();
+      if (media.mimeType && media.mimeType.startsWith('video/') && !hlsService.isProcessing(mediaId)) {
         minioService.getFileStream(media.objectKey).then(async (stream) => {
           const chunks = [];
           for await (const chunk of stream) {
@@ -190,7 +218,8 @@ export const mediaService = {
           }
           const fileBuffer = Buffer.concat(chunks);
           const ext = media.originalName?.split('.').pop() || 'mp4';
-          await hlsService.processVideoToHLS(media._id.toString(), fileBuffer, media.uploadedBy, ext);
+          await hlsService.processVideoToHLS(mediaId, fileBuffer, media.uploadedBy, ext);
+          invalidateCache(id); // Cache cũ hết hạn sau khi HLS sẵn sàng
         }).catch(err => {
           console.warn(`⚠️ Lỗi tạo HLS ngầm cho video cũ ${id}:`, err.message);
         });
@@ -206,7 +235,7 @@ export const mediaService = {
   },
 
   getHlsSegment: async (id, segmentName) => {
-    const media = await Media.findById(id);
+    const media = await getCachedMedia(id);
     if (!media) throw new NotFoundError('Media not found');
 
     const segmentKey = `${media.uploadedBy}/hls/${id}/${segmentName}`;

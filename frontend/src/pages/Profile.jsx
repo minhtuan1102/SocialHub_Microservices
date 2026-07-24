@@ -1,6 +1,7 @@
 import {useState, useEffect, useRef} from "react";
 import {useParams, useNavigate} from "react-router-dom";
 import api from "../services/api";
+import { getMediaFileUrl } from "../services/mediaUrl";
 import PostCard from "../components/PostCard";
 import {useAuth} from "../context/AuthContext";
 import {Loader, Calendar, Mail, FileText, UserPlus, UserCheck, UserMinus, MessageSquare, Edit3, Camera, Save, X, Film, Clock} from "lucide-react";
@@ -260,7 +261,11 @@ const Profile = () => {
     const [userReels, setUserReels] = useState([]);
     const [activeTab, setActiveTab] = useState("posts"); // "posts" | "reels"
     const [isLoading, setIsLoading] = useState(true);
-    const [relation, setRelation] = useState({status: "none", requestId: null});
+    const [coverError, setCoverError] = useState(false);
+
+    useEffect(() => {
+        setCoverError(false);
+    }, [profileUser?.coverUrl]);
     const [showEditModal, setShowEditModal] = useState(false);
 
     const isOwnProfile = loggedInUser?.id === id;
@@ -288,12 +293,13 @@ const Profile = () => {
             formData.append("file", fileToUpload);
             const uploadRes = await api.post("/media/upload", formData);
             if (uploadRes.data && uploadRes.data.id) {
-                const newCoverUrl = `${api.defaults.baseURL}/media/file/${uploadRes.data.id}?variant=original`;
-                setProfileUser(prev => ({...prev, coverUrl: newCoverUrl}));
+                const relativeUrl = `/media/file/${uploadRes.data.id}`;
+                const displayUrl = getMediaFileUrl(uploadRes.data.id, "original");
+                setProfileUser(prev => ({...prev, coverUrl: displayUrl}));
                 if (loggedInUser?.id === profileUser.id && setUser) {
-                    setUser({...loggedInUser, coverUrl: newCoverUrl});
+                    setUser({...loggedInUser, coverUrl: displayUrl});
                 }
-                await api.put(`/users/${profileUser.id}`, {coverUrl: newCoverUrl}).catch(() => { });
+                await api.put(`/users/${profileUser.id}`, {coverUrl: relativeUrl}).catch(() => { });
             }
         } catch (err) {
             console.error("❌ Lỗi tải lên ảnh bìa:", err);
@@ -428,11 +434,12 @@ const Profile = () => {
             <div className="relative bg-white border border-slate-200 rounded-2xl md:rounded-3xl overflow-hidden shadow-sm">
                 {/* Banner Ảnh Bìa (Cover Photo) */}
                 <div className="relative h-44 md:h-56 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 overflow-hidden">
-                    {profileUser.coverUrl ? (
+                    {profileUser.coverUrl && !coverError ? (
                         <img
                             src={profileUser.coverUrl}
                             alt="Cover Banner"
                             className="w-full h-full object-cover"
+                            onError={() => setCoverError(true)}
                         />
                     ) : (
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 flex items-center justify-center">

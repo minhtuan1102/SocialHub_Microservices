@@ -120,7 +120,7 @@ const resolveUrls = (obj) => {
             const val = obj[key];
             if (typeof val === "string") {
                 const lowerKey = key.toLowerCase();
-                if ((lowerKey === "avatarurl" || lowerKey === "avatar_url") && val) {
+                if ((lowerKey === "avatarurl" || lowerKey === "avatar_url" || lowerKey === "coverurl" || lowerKey === "cover_url") && val) {
                     if (val.startsWith("blob:")) continue;
 
                     const getMediaBase = () => {

@@ -70,10 +70,11 @@ const HlsVideoPlayer = ({
         hlsRef.current.destroy();
       }
 
+      const isCurrentActive = !isReel || isActive;
       const hls = new Hls({
-        maxBufferLength: 10,       // Preload 10s video vừa đủ xem mượt, giảm nghẽn băng thông 66%
-        maxMaxBufferLength: 20,
-        backBufferLength: 10,      // Giải phóng bộ nhớ video cũ đã xem qua
+        maxBufferLength: isCurrentActive ? 15 : 3,     // Active: buffer 15s; Inactive (nhảy trước): chỉ preload 3s (1 segment) để tránh cướp băng thông
+        maxMaxBufferLength: isCurrentActive ? 30 : 6,
+        backBufferLength: 5,        // Giải phóng nhanh bộ nhớ video cũ đã xem qua
         maxBufferHole: 0.5,        // Tự động nhảy qua khe hở buffer (< 0.5s)
         maxSeekHole: 2,            // Cho phép tua mượt qua ranh giới giữa các segment
         nudgeMaxRetry: 5,          // Tự động đẩy nhẹ playhead nếu video bị khựng ở mốc ranh giới
