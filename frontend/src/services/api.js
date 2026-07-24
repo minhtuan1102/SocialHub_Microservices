@@ -123,17 +123,25 @@ const resolveUrls = (obj) => {
                 if ((lowerKey === "avatarurl" || lowerKey === "avatar_url") && val) {
                     if (val.startsWith("blob:")) continue;
 
+                    const getMediaBase = () => {
+                        const envMedia = import.meta.env.VITE_MEDIA_URL;
+                        if (envMedia) return envMedia.replace(/\/api$/, '');
+                        if (import.meta.env.DEV) return 'http://localhost:5005';
+                        return api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api$/, '') : "";
+                    };
+
                     let resolvedUrl = val;
                     if (!val.startsWith("http")) {
                         const cleanVal = val.startsWith("/") ? val : `/${val}`;
-                        resolvedUrl = `${api.defaults.baseURL}${cleanVal}`;
+                        const base = cleanVal.startsWith("/media/") ? getMediaBase() : api.defaults.baseURL;
+                        resolvedUrl = `${base}${cleanVal}`;
                     } else {
                         try {
-                            const activeOrigin = new URL(api.defaults.baseURL).origin;
+                            const mediaBase = getMediaBase();
                             const urlObj = new URL(val);
-                            if (urlObj.origin !== activeOrigin && val.includes("/media/file/")) {
+                            if (val.includes("/media/file/")) {
                                 const mediaId = val.split("/media/file/").pop().split("?")[0];
-                                resolvedUrl = `${api.defaults.baseURL}/media/file/${mediaId}`;
+                                resolvedUrl = `${mediaBase}/media/file/${mediaId}`;
                             }
                         } catch (e) {}
                     }

@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import Hls from "hls.js";
 import {Loader, Play, Pause, Volume2, VolumeX, Maximize, Minimize} from "lucide-react";
 import api from "../services/api";
+import { getMediaBaseUrl, getMediaFileUrl, getHlsUrl } from "../services/mediaUrl";
 
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return "0:00";
@@ -45,15 +46,7 @@ const HlsVideoPlayer = ({
 
   const [isLandscape, setIsLandscape] = useState(false);
 
-  const getMediaBaseUrl = () => {
-    const envMedia = import.meta.env.VITE_MEDIA_URL;
-    if (envMedia) {
-      return envMedia.replace(/\/api$/, '');
-    }
-    return api.defaults.baseURL || "";
-  };
-
-  const effectivePoster = poster || (mediaId ? `${getMediaBaseUrl()}/media/file/${mediaId}?variant=medium` : undefined);
+  const effectivePoster = poster || (mediaId ? getMediaFileUrl(mediaId, "medium") : undefined);
 
   useEffect(() => {
     if (!mediaId) return;
@@ -62,7 +55,7 @@ const HlsVideoPlayer = ({
     setLoadingText("Đang tải video ...");
 
     const mediaBaseURL = getMediaBaseUrl();
-    const hlsMasterUrl = `${mediaBaseURL}/media/hls/${mediaId}/index.m3u8`;
+    const hlsMasterUrl = getHlsUrl(mediaId);
     const videoNode = videoRef.current;
     if (!videoNode) return;
 
@@ -174,10 +167,16 @@ const HlsVideoPlayer = ({
       if (!isSubscribed) return;
       setLoadingText("Đang tải tệp MP4 dự phòng...");
       try {
-        const fallbackUrl = `${mediaBaseURL}/media/file/${mediaId}`;
-        const res = await api.get(fallbackUrl, {responseType: "blob"});
+        const fallbackUrl = getMediaFileUrl(mediaId);
+        const token = localStorage.getItem("accessToken");
+        const headers = { "ngrok-skip-browser-warning": "any-value" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        
+        const response = await fetch(fallbackUrl, { headers });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const blobData = await response.blob();
         if (isSubscribed) {
-          const blobUrl = URL.createObjectURL(res.data);
+          const blobUrl = URL.createObjectURL(blobData);
           setFallbackBlobUrl(blobUrl);
           if (videoNode) {
             videoNode.src = blobUrl;

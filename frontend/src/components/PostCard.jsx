@@ -1,6 +1,7 @@
 import {useState, useEffect, useRef} from "react";
 import {Link} from "react-router-dom"; // <-- Import thêm Link để điều hướng
 import api from "../services/api";
+import {getMediaFileUrl} from "../services/mediaUrl";
 import {Heart, MessageSquare, Share2, Trash2, Send, Loader, Edit3} from "lucide-react";
 import ShareModal from "./ShareModal";
 import EditPostModal from "./EditPostModal";
