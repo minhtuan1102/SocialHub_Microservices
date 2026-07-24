@@ -44,9 +44,6 @@ export const hlsService = {
       await new Promise((resolve, reject) => {
         ffmpeg(inputPath)
           .outputOptions([
-            '-map 0:v:0',
-            '-map 0:a:0?',
-            '-ignore_unknown',
             '-c:v libx264',
             '-profile:v main',
             '-preset ultrafast',
