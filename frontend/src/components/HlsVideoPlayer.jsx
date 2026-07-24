@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import {useEffect, useRef, useState} from "react";
 import Hls from "hls.js";
-import { Loader, Play, Pause, Volume2, VolumeX, Maximize, Minimize } from "lucide-react";
+import {Loader, Play, Pause, Volume2, VolumeX, Maximize, Minimize} from "lucide-react";
 import api from "../services/api";
 
 const formatTime = (seconds) => {
@@ -45,7 +45,15 @@ const HlsVideoPlayer = ({
 
   const [isLandscape, setIsLandscape] = useState(false);
 
-  const effectivePoster = poster || (mediaId ? `${api.defaults.baseURL || ""}/media/file/${mediaId}?variant=medium` : undefined);
+  const getMediaBaseUrl = () => {
+    const envMedia = import.meta.env.VITE_MEDIA_URL;
+    if (envMedia) {
+      return envMedia.replace(/\/api$/, '');
+    }
+    return api.defaults.baseURL || "";
+  };
+
+  const effectivePoster = poster || (mediaId ? `${getMediaBaseUrl()}/media/file/${mediaId}?variant=medium` : undefined);
 
   useEffect(() => {
     if (!mediaId) return;
@@ -53,8 +61,8 @@ const HlsVideoPlayer = ({
     setIsLoading(true);
     setLoadingText("Đang tải video ...");
 
-    const baseURL = api.defaults.baseURL || "";
-    const hlsMasterUrl = `${baseURL}/media/hls/${mediaId}/index.m3u8`;
+    const mediaBaseURL = getMediaBaseUrl();
+    const hlsMasterUrl = `${mediaBaseURL}/media/hls/${mediaId}/index.m3u8`;
     const videoNode = videoRef.current;
     if (!videoNode) return;
 
@@ -70,12 +78,13 @@ const HlsVideoPlayer = ({
       }
 
       const hls = new Hls({
-        maxBufferLength: 30,       // Preload 30s video vào buffer
-        maxMaxBufferLength: 60,
+        maxBufferLength: 10,       // Preload 10s video vừa đủ xem mượt, giảm nghẽn băng thông 66%
+        maxMaxBufferLength: 20,
+        backBufferLength: 10,      // Giải phóng bộ nhớ video cũ đã xem qua
         maxBufferHole: 0.5,        // Tự động nhảy qua khe hở buffer (< 0.5s)
         maxSeekHole: 2,            // Cho phép tua mượt qua ranh giới giữa các segment
         nudgeMaxRetry: 5,          // Tự động đẩy nhẹ playhead nếu video bị khựng ở mốc ranh giới
-        enableWorker: false,
+        enableWorker: true,
         autoStartLoad: true,
         xhrSetup: (xhr) => {
           xhr.setRequestHeader("ngrok-skip-browser-warning", "any-value");
@@ -165,7 +174,8 @@ const HlsVideoPlayer = ({
       if (!isSubscribed) return;
       setLoadingText("Đang tải tệp MP4 dự phòng...");
       try {
-        const res = await api.get(`/media/file/${mediaId}`, { responseType: "blob" });
+        const fallbackUrl = `${mediaBaseURL}/media/file/${mediaId}`;
+        const res = await api.get(fallbackUrl, {responseType: "blob"});
         if (isSubscribed) {
           const blobUrl = URL.createObjectURL(res.data);
           setFallbackBlobUrl(blobUrl);
@@ -207,7 +217,7 @@ const HlsVideoPlayer = ({
       videoNode.src = hlsMasterUrl;
       setIsLoading(false);
       if (autoPlay || (isReel && isActive)) {
-        videoNode.play().then(() => { setIsPlaying(true); if (onPlaySuccess) onPlaySuccess(); }).catch(() => { });
+        videoNode.play().then(() => {setIsPlaying(true); if (onPlaySuccess) onPlaySuccess();}).catch(() => { });
       }
     } else if (Hls.isSupported()) {
       setupHlsJs();
@@ -340,9 +350,8 @@ const HlsVideoPlayer = ({
       <video
         ref={videoRef}
         poster={effectivePoster}
-        className={`w-full h-full relative z-10 ${
-          isLandscape ? "object-contain" : (objectFit || "object-cover")
-        }`}
+        className={`w-full h-full relative z-10 ${isLandscape ? "object-contain" : (objectFit || "object-cover")
+          }`}
         controls={false} // Tắt controls mặc định của trình duyệt để dùng custom UI đẹp mắt 100%
         loop={loop}
         muted={isMuted}
@@ -433,7 +442,7 @@ const HlsVideoPlayer = ({
           >
             <div
               className="h-full bg-violet-500 rounded-full relative group-hover/bar:bg-violet-400"
-              style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+              style={{width: `${duration ? (currentTime / duration) * 100 : 0}%`}}
             >
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover/bar:opacity-100 transition-opacity" />
             </div>

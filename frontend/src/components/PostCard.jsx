@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom"; // <-- Import thêm Link để điều hướng
+import {useState, useEffect, useRef} from "react";
+import {Link} from "react-router-dom"; // <-- Import thêm Link để điều hướng
 import api from "../services/api";
-import { Heart, MessageSquare, Share2, Trash2, Send, Loader, Edit3 } from "lucide-react";
+import {Heart, MessageSquare, Share2, Trash2, Send, Loader, Edit3} from "lucide-react";
 import ShareModal from "./ShareModal";
 import EditPostModal from "./EditPostModal";
 import ImageLightboxModal from "./ImageLightboxModal";
 import HlsVideoPlayer from "./HlsVideoPlayer";
-import { useAuth } from "../context/AuthContext"; // <-- Import useAuth
-import { formatRelativeTime } from "../utils/dateUtils";
+import {useAuth} from "../context/AuthContext"; // <-- Import useAuth
+import {formatRelativeTime} from "../utils/dateUtils";
 
-const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpdated }) => {
-    const { user: currentUser } = useAuth(); // Lấy thông tin user hiện tại
+const PostCard = ({post, currentUserId, onPostShared, onPostDeleted, onPostUpdated}) => {
+    const {user: currentUser} = useAuth(); // Lấy thông tin user hiện tại
     const [showEditModal, setShowEditModal] = useState(false);
     const [lightboxData, setLightboxData] = useState(null); // { items: [...], index: 0 }
     const [isLiked, setIsLiked] = useState(post.isLikedByMe || false);
@@ -22,7 +22,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
 
     // Mở Lightbox Modal với danh sách toàn bộ ảnh của bài viết
     const handleOpenLightbox = (index, itemsList = mediaItems) => {
-        setLightboxData({ items: itemsList, index });
+        setLightboxData({items: itemsList, index});
     };
 
     // Trạng thái cho bài đăng được chia sẻ
@@ -56,38 +56,38 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
 
     // Hàm phân giải nội dung bình luận để xác định xem có phải là phản hồi không và tag ai, parentId là gì
     const parseComment = (text) => {
-        if (!text) return { isReply: false, parentId: null, mentionName: "", cleanText: "" };
-        
+        if (!text) return {isReply: false, parentId: null, mentionName: "", cleanText: ""};
+
         // 1. Dạng mới có parentId và mention: [reply:parentId:@Tên] nội dung
         const matchFull = text.match(/^\[reply:([0-9a-fA-F-]+):@([^\]]+)\]/);
         if (matchFull) {
-            return { isReply: true, parentId: matchFull[1], mentionName: matchFull[2], cleanText: text.substring(matchFull[0].length).trim() };
+            return {isReply: true, parentId: matchFull[1], mentionName: matchFull[2], cleanText: text.substring(matchFull[0].length).trim()};
         }
-        
+
         // 2. Dạng mới chỉ có parentId: [reply:parentId] nội dung
         const matchParent = text.match(/^\[reply:([0-9a-fA-F-]+)\]/);
         if (matchParent) {
-            return { isReply: true, parentId: matchParent[1], mentionName: "", cleanText: text.substring(matchParent[0].length).trim() };
+            return {isReply: true, parentId: matchParent[1], mentionName: "", cleanText: text.substring(matchParent[0].length).trim()};
         }
 
         // 3. Dạng cũ không có parentId: [reply] nội dung
         if (text.startsWith("[reply]")) {
-            return { isReply: true, parentId: null, mentionName: "", cleanText: text.substring(7).trim() };
+            return {isReply: true, parentId: null, mentionName: "", cleanText: text.substring(7).trim()};
         }
-        
+
         // 4. Dạng cũ: [reply:@Tên] nội dung
         const matchReplyTag = text.match(/^\[reply:@([^\]]+)\]/);
         if (matchReplyTag) {
-            return { isReply: true, parentId: null, mentionName: matchReplyTag[1], cleanText: text.substring(matchReplyTag[0].length).trim() };
+            return {isReply: true, parentId: null, mentionName: matchReplyTag[1], cleanText: text.substring(matchReplyTag[0].length).trim()};
         }
-        
+
         // 5. Dạng cũ (tương thích ngược): @Tên: nội dung
         const matchOldTag = text.match(/^@([^:]+):/);
         if (matchOldTag) {
-            return { isReply: true, parentId: null, mentionName: matchOldTag[1], cleanText: text.substring(matchOldTag[0].length).trim() };
+            return {isReply: true, parentId: null, mentionName: matchOldTag[1], cleanText: text.substring(matchOldTag[0].length).trim()};
         }
 
-        return { isReply: false, parentId: null, mentionName: "", cleanText: text };
+        return {isReply: false, parentId: null, mentionName: "", cleanText: text};
     };
 
     // Phân nhóm bình luận: bình luận gốc (parents) và bình luận phản hồi (replies) theo parentId
@@ -102,7 +102,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
 
         parsed.forEach(c => {
             const cId = c.id || c._id;
-            
+
             if (c.parsedInfo.isReply && c.parsedInfo.parentId && parsed.some(p => (p.id || p._id) === c.parsedInfo.parentId)) {
                 const pId = c.parsedInfo.parentId;
                 if (!repliesByParent[pId]) repliesByParent[pId] = [];
@@ -131,7 +131,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
             }
         });
 
-        return { parents, repliesByParent };
+        return {parents, repliesByParent};
     };
 
     const [mediaItems, setMediaItems] = useState([]); // [{ id, url, isVideo }]
@@ -158,9 +158,9 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                         const mimeType = metaRes.data?.mimeType || "";
                         const isVideo = mimeType.startsWith("video/");
                         const imgUrl = `${api.defaults.baseURL}/media/file/${mId}?variant=medium`;
-                        return { id: mId, url: imgUrl, isVideo };
+                        return {id: mId, url: imgUrl, isVideo};
                     } catch (err) {
-                        return { id: mId, url: `${api.defaults.baseURL}/media/file/${mId}?variant=medium`, isVideo: true };
+                        return {id: mId, url: `${api.defaults.baseURL}/media/file/${mId}?variant=medium`, isVideo: true};
                     }
                 });
                 const results = await Promise.all(promises);
@@ -223,12 +223,12 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                             const isVideo = mimeType.startsWith("video/");
 
                             if (isVideo) {
-                                return { id: mId, url: "", isVideo: true };
+                                return {id: mId, url: "", isVideo: true};
                             } else {
-                                const res = await api.get(`/media/file/${mId}?variant=medium`, { responseType: "blob" });
+                                const res = await api.get(`/media/file/${mId}?variant=medium`, {responseType: "blob"});
                                 const objUrl = URL.createObjectURL(res.data);
                                 createdObjectUrls.push(objUrl);
-                                return { id: mId, url: objUrl, isVideo: false };
+                                return {id: mId, url: objUrl, isVideo: false};
                             }
                         } catch (err) {
                             return null;
@@ -425,9 +425,8 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
 
             {/* Khung hiển thị đa phương tiện (Ảnh & Video Grid) */}
             {mediaItems.length > 0 && (
-                <div className={`grid gap-2 rounded-2xl overflow-hidden border border-slate-200 mb-4 bg-slate-50 ${
-                    mediaItems.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                }`}>
+                <div className={`grid gap-2 rounded-2xl overflow-hidden border border-slate-200 mb-4 bg-slate-50 ${mediaItems.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                    }`}>
                     {mediaItems.map((item, idx) => (
                         <div key={item.id} className="relative overflow-hidden flex items-center justify-center bg-black/5 rounded-xl">
                             {item.isVideo ? (
@@ -479,9 +478,8 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                             <p className="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap">{originalPost.content}</p>
                             {/* Các tệp Media đính kèm bài gốc */}
                             {originalMediaItems.length > 0 && (
-                                <div className={`grid gap-1.5 rounded-xl overflow-hidden border border-slate-200 mt-2 bg-slate-50 max-w-lg ${
-                                    originalMediaItems.length === 1 ? "grid-cols-1" : "grid-cols-2"
-                                }`}>
+                                <div className={`grid gap-1.5 rounded-xl overflow-hidden border border-slate-200 mt-2 bg-slate-50 max-w-lg ${originalMediaItems.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                                    }`}>
                                     {originalMediaItems.map((item, idx) => (
                                         <div key={item.id} className="relative overflow-hidden flex items-center justify-center bg-black/5 rounded-lg max-h-48">
                                             {item.isVideo ? (
@@ -588,8 +586,8 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                     ) : comments.length > 0 ? (
                         <div className="space-y-3.5 max-h-60 overflow-y-auto pr-1">
                             {(() => {
-                                const { parents, repliesByParent } = getStructuredComments();
-                                
+                                const {parents, repliesByParent} = getStructuredComments();
+
                                 return parents.map((parentComment) => {
                                     const parentId = parentComment.id || parentComment._id;
                                     const isParentAuthor = parentComment.author_id === currentUserId;
@@ -623,7 +621,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                                                                 parentComment.parsedInfo?.cleanText || parentComment.content
                                                             )}
                                                         </p>
-                                                        
+
                                                         {/* Nút Phản hồi */}
                                                         <button
                                                             onClick={() => handleReplyClick(parentComment)}
@@ -649,7 +647,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                                             {parentReplies.map((reply) => {
                                                 const rId = reply.id || reply._id;
                                                 const isReplyAuthor = reply.author_id === currentUserId;
-                                                
+
                                                 return (
                                                     <div key={rId} className="flex items-start justify-between bg-blue-50/40 rounded-2xl p-3 border border-blue-100/50 ml-8 group transition-all duration-200">
                                                         <div className="flex items-start space-x-3">
@@ -675,7 +673,7 @@ const PostCard = ({ post, currentUserId, onPostShared, onPostDeleted, onPostUpda
                                                                         reply.parsedInfo?.cleanText || reply.content
                                                                     )}
                                                                 </p>
-                                                                
+
                                                                 {/* Nút Phản hồi (để phản hồi tiếp trên cùng nhánh cha) */}
                                                                 <button
                                                                     onClick={() => handleReplyClick(parentComment)}
