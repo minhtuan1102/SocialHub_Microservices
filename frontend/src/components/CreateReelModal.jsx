@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Video, X, Upload, Loader } from "lucide-react";
 import api from "../services/api";
 import MaterialIcon from "./MaterialIcon";
 
