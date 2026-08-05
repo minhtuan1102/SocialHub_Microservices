@@ -375,10 +375,10 @@ const ReelThumbnail = ({reel, onClick, isOwnProfile, onDelete}) => {
 };
 
 const Profile = () => {
-    const {user: currentUser} = useAuth();
+    const { id } = useParams();
     const confirm = useConfirm(); 
     const navigate = useNavigate();
-    const {user: loggedInUser, setUser, logout} = useAuth();
+    const { user: loggedInUser, setUser, logout } = useAuth();
 
     const [profileUser, setProfileUser] = useState(null);
     const [userPosts, setUserPosts] = useState([]);
