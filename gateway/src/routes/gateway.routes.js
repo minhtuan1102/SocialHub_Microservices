@@ -8,9 +8,12 @@ const router = express.Router();
 router.post('/auth/register', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.post('/auth/login', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.post('/auth/refresh', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
+router.post('/auth/forgot-password', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
+router.post('/auth/reset-password', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 
 // user-service protected routes
 router.post('/auth/logout', protectRoute, (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
+router.post('/auth/change-password', protectRoute, (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.get('/users/search', protectRoute, (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.get('/users/:id', protectRoute, (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.put('/users/:id', protectRoute, (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));

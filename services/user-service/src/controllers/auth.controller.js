@@ -2,8 +2,10 @@ import bcrypt from "bcryptjs";
 import pool from "../config/db.js";
 import redis from "../config/redis.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 import { generateAccessToken, generateRefreshToken, getRefreshTokenExpiry } from "../utils/token.js";
+import { sendResetPasswordEmail } from "../utils/mail.js";
 
 export const register = async (req, res) => {
 
@@ -231,4 +233,140 @@ export const refresh = async (req, res) => {
             message: error.message
         });
     }
-}
+};
+
+export const changePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    try {
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: "Mật khẩu hiện tại và mật khẩu mới là bắt buộc." });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: "Mật khẩu mới phải có ít nhất 6 ký tự." });
+        }
+
+        // Tìm người dùng trong database
+        const userRes = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy người dùng." });
+        }
+
+        const dbUser = userRes.rows[0];
+
+        // So sánh mật khẩu cũ
+        const isMatch = await bcrypt.compare(currentPassword, dbUser.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Mật khẩu hiện tại không chính xác." });
+        }
+
+        // Băm mật khẩu mới
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Cập nhật mật khẩu mới vào cơ sở dữ liệu
+        await pool.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [hashedPassword, userId]);
+
+        // Đăng xuất khỏi các thiết bị khác bằng cách xóa refresh tokens
+        await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [userId]);
+
+        return res.status(200).json({
+            success: true,
+            message: "Đổi mật khẩu thành công! Tất cả các phiên làm việc khác đã được đăng xuất."
+        });
+
+    } catch (error) {
+        console.error("❌ Lỗi trong controller changePassword:", error);
+        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi đổi mật khẩu." });
+    }
+};
+
+export const forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Email là bắt buộc." });
+        }
+
+        // Kiểm tra email tồn tại trong Postgres
+        const userRes = await pool.query("SELECT id, email FROM users WHERE email = $1", [email]);
+        
+        // Trả về thông báo thành công chung (security best practice) nhưng thực tế chỉ gửi mail nếu tồn tại
+        if (userRes.rows.length === 0) {
+            // Log nội bộ để biết
+            console.log(`ℹ️ [FORGOT PASSWORD] Email ${email} không tồn tại trong hệ thống.`);
+            return res.status(200).json({
+                success: true,
+                message: "Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu."
+            });
+        }
+
+        const user = userRes.rows[0];
+
+        // Tạo Token reset mật khẩu
+        const token = crypto.randomBytes(32).toString("hex");
+
+        // Lưu vào Redis, thời gian hết hạn là 1 giờ (3600s)
+        await redis.setex(`reset-token:${token}`, 3600, JSON.stringify({ userId: user.id, email: user.email }));
+
+        // Gửi email
+        await sendResetPasswordEmail(user.email, token);
+
+        return res.status(200).json({
+            success: true,
+            message: "Nếu email tồn tại trong hệ thống, chúng tôi đã gửi liên kết đặt lại mật khẩu."
+        });
+
+    } catch (error) {
+        console.error("❌ Lỗi trong controller forgotPassword:", error);
+        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi xử lý yêu cầu quên mật khẩu." });
+    }
+};
+
+export const resetPassword = async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    try {
+        if (!token || !newPassword) {
+            return res.status(400).json({ success: false, message: "Token và mật khẩu mới là bắt buộc." });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: "Mật khẩu mới phải có ít nhất 6 ký tự." });
+        }
+
+        // Lấy thông tin lưu trong Redis
+        const dataStr = await redis.get(`reset-token:${token}`);
+        if (!dataStr) {
+            return res.status(400).json({
+                success: false,
+                message: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn."
+            });
+        }
+
+        const { userId } = JSON.parse(dataStr);
+
+        // Băm mật khẩu mới
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Cập nhật vào Postgres
+        await pool.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [hashedPassword, userId]);
+
+        // Xóa refresh tokens cũ
+        await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [userId]);
+
+        // Xóa token reset khỏi Redis
+        await redis.del(`reset-token:${token}`);
+
+        return res.status(200).json({
+            success: true,
+            message: "Đặt lại mật khẩu thành công! Bạn có thể dùng mật khẩu mới để đăng nhập."
+        });
+
+    } catch (error) {
+        console.error("❌ Lỗi trong controller resetPassword:", error);
+        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi đặt lại mật khẩu." });
+    }
+};
