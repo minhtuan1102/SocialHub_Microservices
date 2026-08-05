@@ -6,6 +6,8 @@ import { getUserProfile } from '../utils/api.js';
 export const feedService = {
   getFeed: async ({ page, limit, cursor, currentUserId, token }) => {
     let allowedAuthorIds = [currentUserId];
+    let joinedGroupIds = [];
+
     try {
       const friendServiceUrl = process.env.FRIEND_SERVICE_URL || 'http://friend-service:5000';
       const friendRes = await axios.get(`${friendServiceUrl}/api/friends/internal/${currentUserId}`);
@@ -16,13 +18,19 @@ export const feedService = {
       console.error('❌ Error fetching friends for feed:', err.message);
     }
 
+    try {
+      joinedGroupIds = await feedRepository.getUserJoinedGroupIds(currentUserId);
+    } catch (err) {
+      console.error('❌ Error fetching joined groups for feed:', err.message);
+    }
+
     let posts = [];
     
     if (cursor) {
-      posts = await feedRepository.getRecentPostsWithCursor(cursor, limit, allowedAuthorIds);
+      posts = await feedRepository.getRecentPostsWithCursor(cursor, limit, allowedAuthorIds, joinedGroupIds);
     } else {
       const offset = (page - 1) * limit;
-      posts = await feedRepository.getRecentPostsWithOffset(limit, offset, allowedAuthorIds);
+      posts = await feedRepository.getRecentPostsWithOffset(limit, offset, allowedAuthorIds, joinedGroupIds);
     }
 
     const postsWithDetails = await Promise.all(posts.map(async (post) => {

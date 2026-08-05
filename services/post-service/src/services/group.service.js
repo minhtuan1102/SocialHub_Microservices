@@ -184,8 +184,8 @@ export const groupService = {
       throw new BadRequestError('User is not an approved member');
     }
 
-    if (targetMember.role === 'admin') {
-      throw new ForbiddenError('Cannot change group creator/admin role');
+    if (group.created_by === userIdToUpdate) {
+      throw new ForbiddenError('Cannot change the role of the group creator');
     }
 
     if (!['admin', 'moderator', 'member'].includes(newRole)) {

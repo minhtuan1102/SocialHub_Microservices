@@ -2,7 +2,7 @@ import {useState, useEffect, useRef} from "react";
 import {Link} from "react-router-dom"; // <-- Import thêm Link để điều hướng
 import api from "../services/api";
 import {getMediaFileUrl} from "../services/mediaUrl";
-import {Heart, MessageSquare, Share2, Trash2, Send, Loader, Edit3} from "lucide-react";
+import {Heart, MessageSquare, Share2, Trash2, Send, Loader, Edit3, Globe, Lock, Users} from "lucide-react";
 import ShareModal from "./ShareModal";
 import EditPostModal from "./EditPostModal";
 import ImageLightboxModal from "./ImageLightboxModal";
@@ -491,17 +491,26 @@ const PostCard = ({post, currentUserId, onPostShared, onPostDeleted, onPostUpdat
                         />
                     </Link>
                     <div>
-                        <div className="flex items-center flex-wrap gap-1">
+                        <div className="flex items-center flex-wrap gap-1.5">
                             <Link to={authorProfilePath} className="font-semibold text-slate-800 text-sm hover:text-blue-600 transition">
                                 {post.author?.displayName || "Người dùng SocialHub"}
                             </Link>
                             {post.group && (
-                                <>
-                                    <span className="text-xs text-slate-450 font-bold mx-0.5">➔</span>
-                                    <Link to={`/groups/${post.group.id}`} className="font-semibold text-slate-650 hover:text-blue-600 transition">
-                                        {post.group.name}
+                                <div className="inline-flex items-center gap-1 text-xs">
+                                    <span className="text-slate-400 font-medium">đăng trong</span>
+                                    <Link 
+                                        to={`/groups/${post.group.id}`} 
+                                        className="font-semibold text-slate-700 hover:text-blue-600 transition inline-flex items-center gap-1 bg-slate-100/90 hover:bg-blue-50/80 px-2 py-0.5 rounded-md border border-slate-200/60"
+                                    >
+                                        <Users className="w-3 h-3 text-blue-600" />
+                                        <span>{post.group.name}</span>
+                                        {post.group.privacy === 'private' ? (
+                                            <Lock className="w-2.5 h-2.5 text-slate-400" title="Nhóm riêng tư" />
+                                        ) : (
+                                            <Globe className="w-2.5 h-2.5 text-slate-400" title="Nhóm công khai" />
+                                        )}
                                     </Link>
-                                </>
+                                </div>
                             )}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">{formatRelativeTime(post.created_at || post.createdAt)}</p>
