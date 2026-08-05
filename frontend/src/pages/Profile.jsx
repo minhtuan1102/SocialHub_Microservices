@@ -3,7 +3,7 @@ import {useParams, useNavigate} from "react-router-dom";
 import api from "../services/api";
 import PostCard from "../components/PostCard";
 import {useAuth} from "../context/AuthContext";
-import {Loader, Calendar, Mail, FileText, UserPlus, UserCheck, UserMinus, MessageSquare, Edit3, Camera, Save, X, Film, Clock, Trash2} from "lucide-react";
+import {Loader, Calendar, Mail, FileText, UserPlus, UserCheck, UserMinus, MessageSquare, Edit3, Camera, Save, X, Film, Clock, Trash2, Lock} from "lucide-react";
 import imageCompression from "browser-image-compression";
 import {formatRelativeTime} from "../utils/dateUtils";
 
@@ -188,6 +188,128 @@ const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
     );
 };
 
+const ChangePasswordModal = ({ onClose, onLogout }) => {
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (newPassword.length < 6) {
+            setError("Mật khẩu mới phải có ít nhất 6 ký tự!");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setError("Xác nhận mật khẩu mới không trùng khớp!");
+            return;
+        }
+
+        setIsSubmitting(true);
+        setError("");
+
+        try {
+            const res = await api.post("/auth/change-password", {
+                currentPassword,
+                newPassword
+            });
+
+            if (res.data && res.data.success) {
+                alert("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
+                onLogout();
+            }
+        } catch (err) {
+            console.error("❌ Lỗi đổi mật khẩu:", err);
+            setError(err.response?.data?.message || "Không thể đổi mật khẩu. Vui lòng kiểm tra lại!");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fadeIn">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+                    <h3 className="font-bold text-slate-800 text-sm">Đổi mật khẩu</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-slate-700 transition cursor-pointer p-1 rounded-lg hover:bg-slate-200"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-650 px-3 py-2.5 rounded-xl text-xs text-center font-medium">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-500 font-semibold uppercase">Mật khẩu hiện tại</label>
+                        <input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="Nhập mật khẩu hiện tại..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 transition"
+                            required
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-500 font-semibold uppercase">Mật khẩu mới</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Tối thiểu 6 ký tự..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 transition"
+                            required
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="block text-[10px] text-slate-500 font-semibold uppercase">Xác nhận mật khẩu mới</label>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Nhập lại mật khẩu mới..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 transition"
+                            required
+                        />
+                    </div>
+
+                    <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-5 py-2 text-slate-650 hover:bg-slate-100 rounded-xl transition cursor-pointer text-xs font-semibold"
+                        >
+                            Hủy bỏ
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition cursor-pointer text-xs font-semibold shadow-md shadow-blue-600/10 flex items-center space-x-1.5 disabled:opacity-50"
+                        >
+                            {isSubmitting ? (
+                                <Loader className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Lock className="w-4 h-4" />
+                            )}
+                            <span>{isSubmitting ? "Đang xử lý..." : "Cập nhật"}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const ReelThumbnail = ({reel, onClick, isOwnProfile, onDelete}) => {
     const [videoSrc, setVideoSrc] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -268,7 +390,7 @@ const ReelThumbnail = ({reel, onClick, isOwnProfile, onDelete}) => {
 const Profile = () => {
     const {id} = useParams(); // Lấy ID người dùng từ thanh địa chỉ /profile/:id
     const navigate = useNavigate();
-    const {user: loggedInUser, setUser} = useAuth();
+    const {user: loggedInUser, setUser, logout} = useAuth();
 
     const [profileUser, setProfileUser] = useState(null);
     const [userPosts, setUserPosts] = useState([]);
@@ -277,6 +399,7 @@ const Profile = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [relation, setRelation] = useState({status: "none", requestId: null});
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
     const isOwnProfile = loggedInUser?.id === id;
     const coverInputRef = useRef(null);
@@ -611,6 +734,13 @@ const Profile = () => {
                                 <Edit3 className="w-4 h-4" />
                                 <span>Chỉnh sửa trang cá nhân</span>
                             </button>
+                            <button
+                                onClick={() => setShowChangePasswordModal(true)}
+                                className="flex items-center space-x-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-semibold cursor-pointer transition"
+                            >
+                                <Lock className="w-4 h-4 text-slate-550" />
+                                <span>Đổi mật khẩu</span>
+                            </button>
                         </div>
                     )}
                 </div>
@@ -705,6 +835,14 @@ const Profile = () => {
                         // Cập nhật lên AuthContext - merge đầy đủ tất cả fields từ server
                         setUser(prev => ({...prev, ...updatedUser}));
                     }}
+                />
+            )}
+
+            {/* Modal đổi mật khẩu */}
+            {showChangePasswordModal && (
+                <ChangePasswordModal
+                    onClose={() => setShowChangePasswordModal(false)}
+                    onLogout={logout}
                 />
             )}
         </div>

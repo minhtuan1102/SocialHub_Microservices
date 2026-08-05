@@ -83,6 +83,11 @@ const Login = () => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-base sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition duration-200"
                             />
                         </div>
+                        <div className="flex justify-end">
+                            <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700 hover:underline transition font-medium">
+                                Quên mật khẩu?
+                            </Link>
+                        </div>
                     </div>
 
                     {/* Nút đăng nhập Solid Blue */}
