@@ -73,21 +73,14 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
-        notifSock.on("connect", () => {
-            console.log("⚡ Kết nối thành công tới Notification Socket!");
-        });
+        notifSock.on("connect", () => {});
 
         notifSock.on("connect_error", async (err) => {
-            console.warn("⚠️ Lỗi kết nối Notification Socket:", err.message);
             if (err.message.includes("expired") || err.message.includes("Authentication error") || err.message.includes("Token missing")) {
                 try {
-                    // Gọi một API đơn giản để kích hoạt bộ lọc làm mới token của Axios
                     await api.get("/notifications/unread-count");
-                    console.log("🔄 Đã làm mới token thành công, thử kết nối lại Notification Socket...");
                     notifSock.connect();
-                } catch (refreshErr) {
-                    console.error("❌ Không thể tự động làm mới token cho socket:", refreshErr.message);
-                }
+                } catch (refreshErr) {}
             }
         });
 
@@ -96,7 +89,6 @@ export const SocketProvider = ({ children }) => {
         });
 
         notifSock.on("notification:new", (notification) => {
-            console.log("📡 Nhận thông báo realtime:", notification);
             // Increment unread count instantly
             setUnreadCount(prev => prev + 1);
             
@@ -135,39 +127,29 @@ export const SocketProvider = ({ children }) => {
             }
         });
 
-        chSock.on("connect", () => {
-            console.log("⚡ Kết nối thành công tới Chat Socket!");
-        });
+        chSock.on("connect", () => {});
 
         chSock.on("connect_error", async (err) => {
-            console.warn("⚠️ Lỗi kết nối Chat Socket:", err.message);
             if (err.message.includes("expired") || err.message.includes("Authentication error") || err.message.includes("Token missing")) {
                 try {
-                    // Gọi một API đơn giản để kích hoạt bộ lọc làm mới token của Axios
                     await api.get("/notifications/unread-count");
-                    console.log("🔄 Đã làm mới token thành công, thử kết nối lại Chat Socket...");
                     chSock.connect();
-                } catch (refreshErr) {
-                    console.error("❌ Không thể tự động làm mới token cho socket:", refreshErr.message);
-                }
+                } catch (refreshErr) {}
             }
         });
 
         // Lắng nghe trạng thái trực tuyến của người dùng khác
         chSock.on("presence:initial", ({ onlineUsers: initOnline }) => {
-            console.log("🟢 [PRESENCE] Nhận ảnh trạng thái online ban đầu:", initOnline);
             if (initOnline) {
                 setOnlineUsers(prev => ({ ...prev, ...initOnline }));
             }
         });
 
         chSock.on("user:online", ({ userId }) => {
-            console.log(`🟢 User ${userId} online`);
             setOnlineUsers(prev => ({ ...prev, [userId]: true }));
         });
 
         chSock.on("user:offline", ({ userId }) => {
-            console.log(`🔴 User ${userId} offline`);
             setOnlineUsers(prev => {
                 const updated = { ...prev };
                 delete updated[userId];
@@ -177,7 +159,6 @@ export const SocketProvider = ({ children }) => {
 
         // Lắng nghe cuộc gọi đến (Realtime WebRTC Incoming Call)
         chSock.on("call:incoming", (data) => {
-            console.log("📞 [SOCKET] Nhận cuộc gọi đến từ:", data);
             setIncomingCall(data);
         });
 

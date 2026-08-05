@@ -4,6 +4,8 @@ import { likeRepository } from '../repositories/like.repository.js';
 import { validateMediaIds, getUserProfile } from '../utils/api.js';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/error.js';
 
+import { groupRepository } from '../repositories/group.repository.js';
+
 export const postService = {
   createPost: async ({ authorId, content, mediaIds, visibility, token }) => {
     if (!content && (!mediaIds || mediaIds.length === 0)) {
@@ -70,8 +72,16 @@ export const postService = {
       throw new NotFoundError('Post not found');
     }
 
-    if (post.author_id !== authorId) {
-      throw new ForbiddenError('Only the author can delete this post');
+    let isAuthorized = post.author_id === authorId;
+    if (!isAuthorized && post.group_id) {
+      const member = await groupRepository.findMember(post.group_id, authorId);
+      if (member && (member.role === 'admin' || member.role === 'moderator') && member.status === 'approved') {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new ForbiddenError('Only the post author or group admin/moderator can delete this post');
     }
 
     await postRepository.delete(id);
@@ -115,5 +125,27 @@ export const postService = {
       total,
       totalPages: Math.ceil(total / limit)
     };
+  },
+
+  toggleComments: async ({ id, userId }) => {
+    const post = await postRepository.findById(id);
+    if (!post) {
+      throw new NotFoundError('Post not found');
+    }
+
+    let isAuthorized = post.author_id === userId;
+    if (!isAuthorized && post.group_id) {
+      const member = await groupRepository.findMember(post.group_id, userId);
+      if (member && (member.role === 'admin' || member.role === 'moderator') && member.status === 'approved') {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new ForbiddenError('Only the post author or group admin/moderator can toggle comments');
+    }
+
+    const newCommentsDisabled = !post.comments_disabled;
+    return await postRepository.updateToggleComments(id, newCommentsDisabled);
   }
 };

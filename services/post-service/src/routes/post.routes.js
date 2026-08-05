@@ -21,6 +21,7 @@ router.use(requireAuth);
 router.post('/posts', PostController.createPost);
 router.get('/posts/:id', PostController.getPostById);
 router.put('/posts/:id', PostController.updatePost);
+router.patch('/posts/:id/toggle-comments', PostController.toggleComments);
 router.delete('/posts/:id', PostController.deletePost);
 router.get('/posts/user/:userId', PostController.getUserPosts);
 
@@ -35,6 +36,7 @@ router.get('/posts/:id/likes', LikeController.getPostLikes);
 // Comments
 router.get('/posts/:id/comments', CommentController.getPostComments);
 router.post('/posts/:id/comments', CommentController.createComment);
+router.put('/posts/:postId/comments/:commentId', CommentController.updateComment);
 router.delete('/posts/:postId/comments/:commentId', CommentController.deleteComment);
 
 // Share

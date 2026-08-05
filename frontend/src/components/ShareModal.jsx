@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
-import { X, Send, Loader, MessageSquare, Search, Check } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 
 const ShareModal = ({ post, onClose, onShareSuccess }) => {
     const { user: currentUser } = useAuth();
@@ -50,12 +50,9 @@ const ShareModal = ({ post, onClose, onShareSuccess }) => {
                 if (onShareSuccess) {
                     onShareSuccess(res.data.data);
                 }
-                alert("Đã chia sẻ lên bảng tin thành công!");
                 onClose();
             }
         } catch (error) {
-            console.error("❌ Lỗi chia sẻ bài viết:", error.message);
-            alert(error.response?.data?.message || "Lỗi khi chia sẻ bài đăng!");
         } finally {
             setIsSubmitting(false);
         }
@@ -64,7 +61,6 @@ const ShareModal = ({ post, onClose, onShareSuccess }) => {
     // Gửi link bài viết vào cuộc trò chuyện chat qua WebSocket
     const handleSendToChat = (convId) => {
         if (!chatSocket || !chatSocket.connected) {
-            alert("Lỗi kết nối máy chủ tin nhắn. Vui lòng thử lại!");
             return;
         }
 

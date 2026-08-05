@@ -27,8 +27,10 @@ router.post('/groups/:id/members/:userId/approve', GroupController.approveMember
 router.delete('/groups/:id/members/:userId/remove', GroupController.removeMember);
 router.put('/groups/:id/members/:userId/role', GroupController.updateMemberRole);
 
-// Quyền Admin / Moderator duyệt bài đăng trong nhóm
+// Quyền Admin / Moderator duyệt bài đăng trong nhóm & Cài đặt nhóm
+router.put('/groups/:id/settings', GroupController.updateGroupSettings);
 router.post('/groups/:id/posts/:postId/approve', GroupController.approvePost);
 router.post('/groups/:id/posts/:postId/reject', GroupController.rejectPost);
+router.delete('/groups/:id/posts/:postId', GroupController.deletePostInGroup);
 
 export default router;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
-import { Video, Loader } from "lucide-react";
+import MaterialIcon from "../MaterialIcon";
 
 // Component con tải Ảnh & Video an toàn bằng blob đính kèm JWT Token
 const ChatMedia = ({ mediaId, onLoad, onOpenLightbox, isThumbnailOnly = false }) => {

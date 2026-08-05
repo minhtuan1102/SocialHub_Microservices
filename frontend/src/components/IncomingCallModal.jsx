@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Phone, PhoneOff, Video } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 
 const IncomingCallModal = ({ incomingCall, onAccept, onReject }) => {
     if (!incomingCall) return null;

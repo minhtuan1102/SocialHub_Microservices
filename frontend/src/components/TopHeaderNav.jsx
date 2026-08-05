@@ -4,24 +4,10 @@ import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { formatRelativeTime } from "../utils/dateUtils";
-import { 
-    Users, 
-    MessageSquare, 
-    Bell, 
-    Check, 
-    X, 
-    Heart, 
-    UserPlus, 
-    UserCheck, 
-    Share2, 
-    Loader, 
-    CheckCheck,
-    ChevronRight,
-    Sparkles
-} from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 
-const TopHeaderNav = () => {
-    const { user } = useAuth();
+const TopHeaderNav = ({ isDark, setIsDark }) => {
+    const { user, logout } = useAuth();
     const { unreadCount, setUnreadCount, onlineUsers, chatSocket } = useSocket();
     const navigate = useNavigate();
 
@@ -206,7 +192,6 @@ const TopHeaderNav = () => {
         setActiveDropdown(null);
         if (!conv) return;
         
-        // Đánh dấu đã đọc trong state để chuyển chữ nhạt hơn và gỡ chấm xanh ngay lập tức
         const convId = conv.id || conv._id;
         setConversations(prev => prev.map(c => {
             if ((c.id || c._id) === convId) {
@@ -220,7 +205,6 @@ const TopHeaderNav = () => {
             return c;
         }));
 
-        // Gửi socket đánh dấu đã đọc
         if (chatSocket && conv.lastMessage && (conv.lastMessage.senderId || conv.lastMessage.sender) !== user?.id) {
             chatSocket.emit("message:read", {
                 conversationId: convId,
@@ -246,7 +230,6 @@ const TopHeaderNav = () => {
             }
         }
 
-        // Điều hướng trực tiếp đến trang chi tiết
         if (notif.type === "friend_request") {
             navigate("/friends");
         } else if (notif.type === "friend_accepted") {
@@ -285,49 +268,45 @@ const TopHeaderNav = () => {
         }
     };
 
-    // Helper format thời gian tương đối
     const formatTimeAgo = (dateString) => {
         if (!dateString) return "";
         return formatRelativeTime(dateString);
     };
 
-    // Helper icon theo loại thông báo
     const getNotificationIcon = (type) => {
         switch (type) {
             case "post_liked":
-                return <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" />;
+                return <MaterialIcon name="favorite" filled className="text-error" size={16} />;
             case "post_commented":
-                return <MessageSquare className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />;
+                return <MaterialIcon name="chat_bubble" filled className="text-primary" size={16} />;
             case "friend_request":
-                return <UserPlus className="w-3.5 h-3.5 text-indigo-500" />;
+                return <MaterialIcon name="person_add" className="text-secondary" size={16} />;
             case "friend_accepted":
-                return <UserCheck className="w-3.5 h-3.5 text-emerald-500" />;
+                return <MaterialIcon name="person_check" className="text-secondary" size={16} />;
             case "post_shared":
-                return <Share2 className="w-3.5 h-3.5 text-purple-500" />;
+                return <MaterialIcon name="share" className="text-tertiary" size={16} />;
             default:
-                return <Bell className="w-3.5 h-3.5 text-blue-500" />;
+                return <MaterialIcon name="notifications" className="text-primary" size={16} />;
         }
     };
 
     return (
-        <div ref={containerRef} className="relative flex items-center space-x-2 sm:space-x-3">
+        <div ref={containerRef} className="relative flex items-center space-x-3">
             
-            {/* ------------------------------------------------------------- */}
-            {/* 1. ICON BẠN BÈ (Friends Icon - Leftmost) */}
-            {/* ------------------------------------------------------------- */}
+            {/* 1. ICON BẠN BÈ */}
             <div className="relative">
                 <button
                     onClick={() => toggleDropdown("friends")}
-                    className={`relative p-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-sm ${
+                    className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                         activeDropdown === "friends"
-                            ? "bg-blue-600 text-white shadow-blue-500/30 scale-105"
-                            : "bg-slate-100/80 hover:bg-slate-200/90 text-slate-700 hover:text-blue-600 active:scale-95"
+                            ? "bg-primary text-on-primary shadow-lg scale-105"
+                            : "bg-surface-container-low/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-primary border border-outline-variant/10 active:scale-95"
                     }`}
                     title="Lời mời kết bạn"
                 >
-                    <Users className="w-5 h-5" />
+                    <MaterialIcon name="people" size={20} filled={activeDropdown === "friends"} />
                     {friendRequests.length > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-md ring-2 ring-white">
+                        <span className="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-md">
                             {friendRequests.length > 9 ? "9+" : friendRequests.length}
                         </span>
                     )}
@@ -335,13 +314,13 @@ const TopHeaderNav = () => {
 
                 {/* Dropdown Lời Mời Kết Bạn */}
                 {activeDropdown === "friends" && (
-                    <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-100 rounded-2xl shadow-2xl shadow-slate-300/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-surface-container-lowest dark:bg-surface-container-high border border-outline-variant/10 rounded-2xl shadow-[0_20px_60px_rgba(142,148,242,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-50 overflow-hidden animate-slide-up">
+                        <div className="p-4 border-b border-outline-variant/10 flex items-center justify-between bg-surface-container-low/40">
                             <div className="flex items-center space-x-2">
-                                <Users className="w-4 h-4 text-blue-600" />
-                                <h3 className="font-bold text-slate-800 text-sm">Lời mời kết bạn</h3>
+                                <MaterialIcon name="people" className="text-primary" size={18} />
+                                <h3 className="font-bold text-on-surface text-sm">Lời mời kết bạn</h3>
                                 {friendRequests.length > 0 && (
-                                    <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                    <span className="bg-primary-container/40 text-on-primary-container text-xs font-semibold px-2 py-0.5 rounded-full">
                                         {friendRequests.length}
                                     </span>
                                 )}
@@ -349,25 +328,25 @@ const TopHeaderNav = () => {
                             <Link 
                                 to="/friends" 
                                 onClick={() => setActiveDropdown(null)} 
-                                className="text-xs text-blue-600 hover:underline font-medium flex items-center"
+                                className="text-xs text-primary hover:underline font-medium flex items-center"
                             >
-                                Xem tất cả <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                                Xem tất cả <MaterialIcon name="chevron_right" size={16} />
                             </Link>
                         </div>
 
-                        <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-50">
+                        <div className="max-h-[380px] overflow-y-auto divide-y divide-outline-variant/5">
                             {isLoadingFriends ? (
-                                <div className="p-8 flex flex-col items-center justify-center text-slate-400">
-                                    <Loader className="w-6 h-6 animate-spin text-blue-600 mb-2" />
+                                <div className="p-8 flex flex-col items-center justify-center text-on-surface-variant/60">
+                                    <MaterialIcon name="progress_activity" className="animate-spin text-primary mb-2" size={24} />
                                     <span className="text-xs">Đang tải lời mời...</span>
                                 </div>
                             ) : friendRequests.length === 0 ? (
                                 <div className="p-8 text-center">
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-                                        <Users className="w-6 h-6" />
+                                    <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mx-auto mb-3 text-on-surface-variant">
+                                        <MaterialIcon name="person_add" size={24} />
                                     </div>
-                                    <p className="text-sm font-medium text-slate-600">Không có lời mời kết bạn mới</p>
-                                    <p className="text-xs text-slate-400 mt-1">Các yêu cầu kết bạn mới sẽ hiển thị tại đây.</p>
+                                    <p className="text-sm font-medium text-on-surface">Không có lời mời kết bạn mới</p>
+                                    <p className="text-xs text-on-surface-variant mt-1">Các yêu cầu kết bạn mới sẽ hiển thị tại đây.</p>
                                 </div>
                             ) : (
                                 friendRequests.map((req) => {
@@ -375,7 +354,7 @@ const TopHeaderNav = () => {
                                     return (
                                         <div 
                                             key={req.id} 
-                                            className="p-3.5 hover:bg-slate-50/80 transition flex items-center justify-between space-x-3"
+                                            className="p-3.5 hover:bg-surface-container-low/60 transition flex items-center justify-between space-x-3"
                                         >
                                             <Link 
                                                 to={`/profile/${sender.id}`} 
@@ -384,14 +363,14 @@ const TopHeaderNav = () => {
                                             >
                                                 <img 
                                                     src={sender.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} 
-                                                    className="w-11 h-11 rounded-full object-cover border border-slate-200 shrink-0" 
+                                                    className="w-11 h-11 rounded-full object-cover border border-outline-variant/20 shrink-0" 
                                                     alt="Avatar" 
                                                 />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="font-semibold text-sm text-slate-800 hover:text-blue-600 truncate">
+                                                    <p className="font-semibold text-sm text-on-surface hover:text-primary truncate">
                                                         {sender.displayName || "Người dùng"}
                                                     </p>
-                                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                                    <p className="text-[11px] text-on-surface-variant mt-0.5">
                                                         {formatTimeAgo(req.createdAt)}
                                                     </p>
                                                 </div>
@@ -399,18 +378,18 @@ const TopHeaderNav = () => {
 
                                             <div className="flex items-center space-x-1.5 shrink-0">
                                                 {processingRequestId === req.id ? (
-                                                    <Loader className="w-4 h-4 animate-spin text-blue-600" />
+                                                    <MaterialIcon name="progress_activity" className="animate-spin text-primary" size={18} />
                                                 ) : (
                                                     <>
                                                         <button
                                                             onClick={(e) => handleAcceptRequest(e, req.id)}
-                                                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm hover:shadow active:scale-95 cursor-pointer"
+                                                            className="bg-primary hover:bg-primary/90 text-on-primary text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
                                                         >
                                                             Đồng ý
                                                         </button>
                                                         <button
                                                             onClick={(e) => handleRejectRequest(e, req.id)}
-                                                            className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-2.5 py-1.5 rounded-xl transition active:scale-95 cursor-pointer"
+                                                            className="bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant text-xs font-semibold px-2.5 py-1.5 rounded-xl transition cursor-pointer"
                                                         >
                                                             Xóa
                                                         </button>
@@ -426,22 +405,20 @@ const TopHeaderNav = () => {
                 )}
             </div>
 
-            {/* ------------------------------------------------------------- */}
-            {/* 2. ICON TIN NHẮN (Messages Icon - Middle) */}
-            {/* ------------------------------------------------------------- */}
+            {/* 2. ICON TIN NHẮN */}
             <div className="relative">
                 <button
                     onClick={() => toggleDropdown("messages")}
-                    className={`relative p-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-sm ${
+                    className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                         activeDropdown === "messages"
-                            ? "bg-blue-600 text-white shadow-blue-500/30 scale-105"
-                            : "bg-slate-100/80 hover:bg-slate-200/90 text-slate-700 hover:text-blue-600 active:scale-95"
+                            ? "bg-primary text-on-primary shadow-lg scale-105"
+                            : "bg-surface-container-low/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-primary border border-outline-variant/10 active:scale-95"
                     }`}
                     title="Tin nhắn"
                 >
-                    <MessageSquare className="w-5 h-5" />
+                    <MaterialIcon name="chat_bubble_outline" size={20} filled={activeDropdown === "messages"} />
                     {unreadMessagesCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-md ring-2 ring-white">
+                        <span className="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-md">
                             {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
                         </span>
                     )}
@@ -449,34 +426,34 @@ const TopHeaderNav = () => {
 
                 {/* Dropdown Hộp Thư Tin Nhắn */}
                 {activeDropdown === "messages" && (
-                    <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-100 rounded-2xl shadow-2xl shadow-slate-300/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-surface-container-lowest dark:bg-surface-container-high border border-outline-variant/10 rounded-2xl shadow-[0_20px_60px_rgba(142,148,242,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-50 overflow-hidden animate-slide-up">
+                        <div className="p-4 border-b border-outline-variant/10 flex items-center justify-between bg-surface-container-low/40">
                             <div className="flex items-center space-x-2">
-                                <MessageSquare className="w-4 h-4 text-blue-600" />
-                                <h3 className="font-bold text-slate-800 text-sm">Tin nhắn gần đây</h3>
+                                <MaterialIcon name="chat_bubble" className="text-primary" size={18} />
+                                <h3 className="font-bold text-on-surface text-sm">Tin nhắn gần đây</h3>
                             </div>
                             <Link 
                                 to="/messages" 
                                 onClick={() => setActiveDropdown(null)} 
-                                className="text-xs text-blue-600 hover:underline font-medium flex items-center"
+                                className="text-xs text-primary hover:underline font-medium flex items-center"
                             >
-                                Xem tất cả tin nhắn <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                                Xem tất cả <MaterialIcon name="chevron_right" size={16} />
                             </Link>
                         </div>
 
-                        <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-50">
+                        <div className="max-h-[380px] overflow-y-auto divide-y divide-outline-variant/5">
                             {isLoadingMessages ? (
-                                <div className="p-8 flex flex-col items-center justify-center text-slate-400">
-                                    <Loader className="w-6 h-6 animate-spin text-blue-600 mb-2" />
+                                <div className="p-8 flex flex-col items-center justify-center text-on-surface-variant/60">
+                                    <MaterialIcon name="progress_activity" className="animate-spin text-primary mb-2" size={24} />
                                     <span className="text-xs">Đang tải tin nhắn...</span>
                                 </div>
                             ) : conversations.length === 0 ? (
                                 <div className="p-8 text-center">
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-                                        <MessageSquare className="w-6 h-6" />
+                                    <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mx-auto mb-3 text-on-surface-variant">
+                                        <MaterialIcon name="chat" size={24} />
                                     </div>
-                                    <p className="text-sm font-medium text-slate-600">Chưa có tin nhắn nào</p>
-                                    <p className="text-xs text-slate-400 mt-1">Bắt đầu trò chuyện với bạn bè ngay!</p>
+                                    <p className="text-sm font-medium text-on-surface">Chưa có tin nhắn nào</p>
+                                    <p className="text-xs text-on-surface-variant mt-1">Bắt đầu trò chuyện với bạn bè ngay!</p>
                                 </div>
                             ) : (
                                 conversations.map((conv) => {
@@ -505,38 +482,37 @@ const TopHeaderNav = () => {
                                         <div
                                             key={conv.id || conv._id}
                                             onClick={() => handleSelectConversation(conv)}
-                                            className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-center space-x-3 group relative ${
-                                                isUnread ? "bg-blue-50/40" : ""
+                                            className={`p-3.5 hover:bg-surface-container-low/60 transition cursor-pointer flex items-center space-x-3 group relative ${
+                                                isUnread ? "bg-primary-container/10" : ""
                                             }`}
                                         >
                                             <div className="relative shrink-0">
                                                 <img 
                                                     src={avatar} 
-                                                    className="w-11 h-11 rounded-full object-cover border border-slate-200" 
+                                                    className="w-11 h-11 rounded-full object-cover border border-outline-variant/20" 
                                                     alt="Avatar" 
                                                 />
                                                 {isOnline && (
-                                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                                                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-secondary border-2 border-surface rounded-full"></span>
                                                 )}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
-                                                    <p className={`text-sm truncate ${isUnread ? "font-bold text-slate-900" : "font-semibold text-slate-800 group-hover:text-blue-600"}`}>
+                                                    <p className={`text-sm truncate ${isUnread ? "font-bold text-on-surface" : "font-semibold text-on-surface group-hover:text-primary"}`}>
                                                         {name}
                                                     </p>
-                                                    <span className={`text-[10px] shrink-0 ml-2 ${isUnread ? "font-bold text-blue-600" : "text-slate-400"}`}>
+                                                    <span className={`text-[10px] shrink-0 ml-2 ${isUnread ? "font-bold text-primary" : "text-on-surface-variant/60"}`}>
                                                         {formatTimeAgo(conv.updatedAt || conv.lastMessageAt)}
                                                     </span>
                                                 </div>
-                                                <p className={`text-xs truncate mt-0.5 ${isUnread ? "font-bold text-slate-900" : "text-slate-500"}`}>
+                                                <p className={`text-xs truncate mt-0.5 ${isUnread ? "font-bold text-on-surface" : "text-on-surface-variant"}`}>
                                                     {conv.lastMessage?.content || "Nhấn để bắt đầu trò chuyện"}
                                                 </p>
                                             </div>
 
-                                            {/* Dấu chấm xanh ở cuối phân biệt tin nhắn chưa đọc */}
                                             {isUnread && (
-                                                <span className="w-2.5 h-2.5 bg-blue-600 rounded-full shrink-0 ml-1 shadow-sm shadow-blue-500/50"></span>
+                                                <span className="w-2.5 h-2.5 bg-primary rounded-full shrink-0 ml-1 shadow-sm"></span>
                                             )}
                                         </div>
                                     );
@@ -547,22 +523,20 @@ const TopHeaderNav = () => {
                 )}
             </div>
 
-            {/* ------------------------------------------------------------- */}
-            {/* 3. ICON THÔNG BÁO (Notifications Icon - Rightmost) */}
-            {/* ------------------------------------------------------------- */}
+            {/* 3. ICON THÔNG BÁO */}
             <div className="relative">
                 <button
                     onClick={() => toggleDropdown("notifications")}
-                    className={`relative p-2.5 rounded-full transition-all duration-200 cursor-pointer shadow-sm ${
+                    className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                         activeDropdown === "notifications"
-                            ? "bg-blue-600 text-white shadow-blue-500/30 scale-105"
-                            : "bg-slate-100/80 hover:bg-slate-200/90 text-slate-700 hover:text-blue-600 active:scale-95"
+                            ? "bg-primary text-on-primary shadow-lg scale-105"
+                            : "bg-surface-container-low/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-primary border border-outline-variant/10 active:scale-95"
                     }`}
                     title="Thông báo"
                 >
-                    <Bell className="w-5 h-5" />
+                    <MaterialIcon name="notifications_none" size={20} filled={activeDropdown === "notifications"} />
                     {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-md ring-2 ring-white">
+                        <span className="absolute -top-1 -right-1 bg-error text-on-error text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-md">
                             {unreadCount > 9 ? "9+" : unreadCount}
                         </span>
                     )}
@@ -570,13 +544,13 @@ const TopHeaderNav = () => {
 
                 {/* Dropdown Danh Sách Thông Báo */}
                 {activeDropdown === "notifications" && (
-                    <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-100 rounded-2xl shadow-2xl shadow-slate-300/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-surface-container-lowest dark:bg-surface-container-high border border-outline-variant/10 rounded-2xl shadow-[0_20px_60px_rgba(142,148,242,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-50 overflow-hidden animate-slide-up">
+                        <div className="p-4 border-b border-outline-variant/10 flex items-center justify-between bg-surface-container-low/40">
                             <div className="flex items-center space-x-2">
-                                <Bell className="w-4 h-4 text-blue-600" />
-                                <h3 className="font-bold text-slate-800 text-sm">Thông báo</h3>
+                                <MaterialIcon name="notifications" className="text-primary" size={18} />
+                                <h3 className="font-bold text-on-surface text-sm">Thông báo</h3>
                                 {unreadCount > 0 && (
-                                    <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                    <span className="bg-error-container/40 text-on-error-container text-xs font-semibold px-2 py-0.5 rounded-full">
                                         {unreadCount} chưa đọc
                                     </span>
                                 )}
@@ -584,26 +558,26 @@ const TopHeaderNav = () => {
                             {unreadCount > 0 && (
                                 <button
                                     onClick={handleMarkAllNotificationsRead}
-                                    className="text-xs text-blue-600 hover:underline font-medium flex items-center cursor-pointer"
+                                    className="text-xs text-primary hover:underline font-medium flex items-center cursor-pointer"
                                 >
-                                    <CheckCheck className="w-3.5 h-3.5 mr-1" /> Đọc tất cả
+                                    <MaterialIcon name="done_all" size={16} className="mr-1" /> Đọc tất cả
                                 </button>
                             )}
                         </div>
 
-                        <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-50">
+                        <div className="max-h-[380px] overflow-y-auto divide-y divide-outline-variant/5">
                             {isLoadingNotifications ? (
-                                <div className="p-8 flex flex-col items-center justify-center text-slate-400">
-                                    <Loader className="w-6 h-6 animate-spin text-blue-600 mb-2" />
+                                <div className="p-8 flex flex-col items-center justify-center text-on-surface-variant/60">
+                                    <MaterialIcon name="progress_activity" className="animate-spin text-primary mb-2" size={24} />
                                     <span className="text-xs">Đang tải thông báo...</span>
                                 </div>
                             ) : notifications.length === 0 ? (
                                 <div className="p-8 text-center">
-                                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
-                                        <Bell className="w-6 h-6" />
+                                    <div className="w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center mx-auto mb-3 text-on-surface-variant">
+                                        <MaterialIcon name="notifications_off" size={24} />
                                     </div>
-                                    <p className="text-sm font-medium text-slate-600">Chưa có thông báo nào</p>
-                                    <p className="text-xs text-slate-400 mt-1">Các hoạt động tương tác mới sẽ xuất hiện ở đây.</p>
+                                    <p className="text-sm font-medium text-on-surface">Chưa có thông báo nào</p>
+                                    <p className="text-xs text-on-surface-variant mt-1">Các hoạt động tương tác mới sẽ xuất hiện ở đây.</p>
                                 </div>
                             ) : (
                                 notifications.map((notif) => {
@@ -612,32 +586,32 @@ const TopHeaderNav = () => {
                                         <div
                                             key={notif.id}
                                             onClick={() => handleNotificationClick(notif)}
-                                            className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-start space-x-3 group relative ${
-                                                !notif.isRead ? "bg-blue-50/40" : ""
+                                            className={`p-3.5 hover:bg-surface-container-low/60 transition cursor-pointer flex items-start space-x-3 group relative ${
+                                                !notif.isRead ? "bg-primary-container/10" : ""
                                             }`}
                                         >
                                             <div className="relative shrink-0">
                                                 <img 
                                                     src={fromUser.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"} 
-                                                    className="w-10 h-10 rounded-full object-cover border border-slate-200" 
+                                                    className="w-10 h-10 rounded-full object-cover border border-outline-variant/20" 
                                                     alt="Avatar" 
                                                 />
-                                                <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-slate-100">
+                                                <div className="absolute -bottom-1 -right-1 bg-surface rounded-full p-0.5 shadow-sm border border-outline-variant/10">
                                                     {getNotificationIcon(notif.type)}
                                                 </div>
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-xs line-clamp-2 ${!notif.isRead ? "font-bold text-slate-900" : "font-normal text-slate-600"}`}>
+                                                <p className={`text-xs line-clamp-2 ${!notif.isRead ? "font-bold text-on-surface" : "font-normal text-on-surface-variant"}`}>
                                                     {notif.message}
                                                 </p>
-                                                <span className="text-[10px] text-blue-600 font-medium mt-1 inline-block">
+                                                <span className="text-[10px] text-primary font-medium mt-1 inline-block">
                                                     {formatRelativeTime(notif.createdAt)}
                                                 </span>
                                             </div>
 
                                             {!notif.isRead && (
-                                                <span className="w-2.5 h-2.5 bg-blue-600 rounded-full shrink-0 mt-1.5 shadow-sm shadow-blue-500/50"></span>
+                                                <span className="w-2.5 h-2.5 bg-primary rounded-full shrink-0 mt-1.5 shadow-sm"></span>
                                             )}
                                         </div>
                                     );
@@ -648,6 +622,45 @@ const TopHeaderNav = () => {
                 )}
             </div>
 
+            {/* 4. CHUYỂN ĐỔI CHẾ ĐỘ SÁNG / TỐI */}
+            {setIsDark && (
+                <button
+                    onClick={() => setIsDark(!isDark)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-low/60 hover:bg-surface-container-high/60 text-on-surface-variant hover:text-primary transition-all duration-200 cursor-pointer border border-outline-variant/10 active:scale-95"
+                    title={isDark ? "Chuyển sang Chế độ Sáng" : "Chuyển sang Chế độ Tối"}
+                >
+                    <MaterialIcon name={isDark ? "light_mode" : "dark_mode"} size={20} />
+                </button>
+            )}
+
+            {/* 5. TRUY CẬP NHANH PROFILE & ĐĂNG XUẤT */}
+            <div className="flex items-center space-x-2 pl-2 border-l border-outline-variant/10">
+                <Link
+                    to={`/profile/${user?.id}`}
+                    className="flex items-center space-x-2.5 p-1.5 pr-3 rounded-full bg-surface-container-low/60 hover:bg-surface-container-high/60 border border-outline-variant/10 transition group cursor-pointer"
+                    title="Trang cá nhân"
+                >
+                    <img
+                        src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
+                        alt="Avatar"
+                        className="w-8 h-8 rounded-full border border-outline-variant/20 object-cover ring-2 ring-primary/10 shrink-0"
+                    />
+                    <span className="text-xs font-semibold text-on-surface group-hover:text-primary transition truncate max-w-[120px]">
+                        {user?.displayName}
+                    </span>
+                </Link>
+
+                <button
+                    onClick={async () => {
+                        await logout();
+                        navigate("/login");
+                    }}
+                    className="p-2 rounded-full text-on-surface-variant hover:text-error hover:bg-error-container/30 transition cursor-pointer border border-outline-variant/10"
+                    title="Đăng xuất"
+                >
+                    <MaterialIcon name="logout" size={18} />
+                </button>
+            </div>
         </div>
     );
 };

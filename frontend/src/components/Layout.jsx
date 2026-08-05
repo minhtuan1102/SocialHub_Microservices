@@ -1,32 +1,70 @@
-import {Outlet, Link, useNavigate, useLocation} from "react-router-dom";
-import {useAuth} from "../context/AuthContext";
-import {useSocket} from "../context/SocketContext";
-import ChatWidget from "./ChatWidget"; // <-- Import thêm ChatWidget
+import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
+import ChatWidget from "./ChatWidget";
 import TopHeaderNav from "./TopHeaderNav";
-import {Home, Users, LogOut, Bell, MessageSquare, Film, Layers} from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
+import { useState, useEffect } from "react";
+import api from "../services/api";
+
 const Layout = () => {
-    const {user, logout} = useAuth();
-    const {unreadCount, toast, setToast} = useSocket();
+    const { user, logout } = useAuth();
+    const { unreadCount, toast, setToast } = useSocket();
     const navigate = useNavigate();
     const location = useLocation();
 
     const isMessagesPage = location.pathname === "/messages";
     const isReelsPage = location.pathname.startsWith("/reels");
 
-    // Helper: trả về className cho nav link dựa trên active state
-    const navLinkClass = (path) => {
-        const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
-        return isActive
-            ? "flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-blue-50 text-blue-700 font-semibold transition"
-            : "flex items-center space-x-3 px-4 py-2.5 rounded-xl hover:bg-slate-100 text-slate-600 transition group";
-    };
+    // ─── Joined Groups State for Left Sidebar ───
+    const [joinedGroups, setJoinedGroups] = useState([]);
 
-    const navIconClass = (path) => {
-        const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
-        return isActive
-            ? "w-5 h-5 text-blue-600"
-            : "w-5 h-5 text-slate-400 group-hover:text-blue-600";
-    };
+    useEffect(() => {
+        const fetchJoinedGroups = async () => {
+            try {
+                const res = await api.get("/social-groups");
+                if (res.data && res.data.success) {
+                    setJoinedGroups(res.data.data || []);
+                }
+            } catch (err) {
+                console.error("❌ Lỗi lấy nhóm đã tham gia:", err);
+            }
+        };
+        if (user) {
+            fetchJoinedGroups();
+        }
+    }, [user]);
+
+    // ─── Dark Mode Toggle ───
+    const [isDark, setIsDark] = useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("socialhub-theme");
+            if (saved) return saved === "dark";
+            return window.matchMedia("(prefers-color-scheme: dark)").matches;
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        const root = document.documentElement;
+        if (isDark) {
+            root.classList.add("dark");
+        } else {
+            root.classList.remove("dark");
+        }
+        localStorage.setItem("socialhub-theme", isDark ? "dark" : "light");
+    }, [isDark]);
+
+    // ─── Navigation Config ───
+    const navItems = [
+        { path: "/", icon: "public", label: "Bảng tin" },
+        { path: "/groups", icon: "hub", label: "Nhóm" },
+        { path: "/reels", icon: "motion_photos_on", label: "Reels" },
+        { path: "/friends", icon: "people", label: "Bạn bè" },
+    ];
+
+    const isNavActive = (path) =>
+        path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
     const handleLogout = async () => {
         await logout();
@@ -53,156 +91,191 @@ const Layout = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 flex">
-            {/* Toast Thông báo Realtime */}
+        <div className="min-h-screen bg-surface text-on-surface">
+            {/* ═══ Toast Notification ═══ */}
             {toast && (
                 <div
                     onClick={() => handleToastClick(toast)}
-                    className="fixed top-5 right-5 z-[9999] bg-white border-l-4 border-blue-600 shadow-xl shadow-slate-200/60 rounded-xl p-4 flex items-center space-x-3.5 cursor-pointer max-w-sm hover:shadow-2xl transition-shadow duration-300 animate-slide-in-right"
+                    className="fixed top-5 right-5 z-[9999] bg-surface-container-low/80 dark:bg-surface-container-high/90 backdrop-blur-2xl border border-outline-variant/20 shadow-[0_20px_60px_rgba(142,148,242,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] rounded-2xl p-4 flex items-center space-x-3.5 cursor-pointer max-w-sm hover:shadow-2xl transition-shadow duration-300 animate-slide-in-right"
                 >
                     <img
                         src={toast.fromUser?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
-                        className="w-10 h-10 rounded-full border border-slate-200 object-cover shrink-0"
+                        className="w-10 h-10 rounded-full border border-outline-variant/20 object-cover shrink-0"
                         alt="Sender Avatar"
                     />
                     <div className="flex-1 min-w-0">
-                        <p className="text-slate-800 text-sm font-semibold truncate-2-lines">{toast.message}</p>
-                        <p className="text-blue-600 text-xs mt-0.5 font-medium">Bấm để xem chi tiết →</p>
+                        <p className="text-on-surface text-sm font-semibold truncate-2-lines">{toast.message}</p>
+                        <p className="text-primary text-xs mt-0.5 font-medium">Bấm để xem chi tiết →</p>
                     </div>
                 </div>
             )}
 
-            {/* Header Top Bar Mobile (Chỉ hiện trên di động < 768px) */}
-            <header className="md:hidden fixed top-0 inset-x-0 h-14 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-4 flex items-center justify-between z-50 shadow-sm">
+            {/* ═══ Mobile Top Bar ═══ */}
+            <header className="md:hidden fixed top-0 inset-x-0 h-14 bg-surface/80 dark:bg-surface-container/80 backdrop-blur-2xl border-b border-outline-variant/10 px-4 flex items-center justify-between z-50">
                 <Link to="/" className="flex items-center space-x-2">
                     <img src="/logo.svg" alt="SocialHub Logo" className="w-8 h-8 object-contain" />
-                    <span className="text-lg font-extrabold text-slate-800 tracking-tight">SocialHub</span>
+                    <span className="text-headline-md text-primary tracking-tight text-lg">SocialHub</span>
                 </Link>
                 <div className="flex items-center space-x-2">
-                    <Link to={`/profile/${user?.id}`} className="flex items-center p-1 rounded-full hover:bg-slate-100 transition">
+                    <button
+                        onClick={() => setIsDark(!isDark)}
+                        className="p-2 rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container-high/60 transition-all"
+                        title="Chuyển giao diện"
+                    >
+                        <MaterialIcon name={isDark ? "light_mode" : "dark_mode"} size={20} />
+                    </button>
+                    <Link to={`/profile/${user?.id}`} className="flex items-center p-1 rounded-full hover:bg-surface-container-high/60 transition">
                         <img
                             src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
                             alt="Avatar"
-                            className="w-8 h-8 rounded-full border border-slate-200 object-cover ring-2 ring-blue-500/20"
+                            className="w-8 h-8 rounded-full border border-outline-variant/20 object-cover ring-2 ring-primary/10"
                         />
                     </Link>
                     <button
                         onClick={handleLogout}
-                        className="p-2 text-slate-500 hover:text-red-600 rounded-xl hover:bg-red-50 transition active:scale-95 cursor-pointer"
+                        className="p-2 text-on-surface-variant hover:text-error rounded-xl hover:bg-error-container/30 transition active:scale-95 cursor-pointer"
                         title="Đăng xuất"
                     >
-                        <LogOut className="w-5 h-5" />
+                        <MaterialIcon name="logout" size={20} />
                     </button>
                 </div>
             </header>
 
-            {/* Sidebar bên trái (Desktop & Tablet >= 768px) */}
-            <aside className="hidden md:flex w-64 bg-white border-r border-slate-200 p-6 flex-col justify-between fixed h-screen z-30">
-                <div className="space-y-8">
+            {/* ═══ Desktop Sidebar ═══ */}
+            <aside className="hidden md:flex w-72 bg-surface-container-low/40 dark:bg-surface-container-low/60 backdrop-blur-2xl fixed h-screen z-30 flex-col pt-8 pb-6 shadow-[10px_0_40px_rgba(142,148,242,0.04)] dark:shadow-[10px_0_40px_rgba(0,0,0,0.2)]">
+                <div className="flex-1 flex flex-col min-h-0 space-y-6">
                     {/* Brand Logo */}
-                    <Link to="/" className="flex items-center space-x-3 group cursor-pointer select-none">
+                    <Link to="/" className="flex items-center space-x-3 group cursor-pointer select-none px-8 shrink-0">
                         <img
                             src="/logo.svg"
                             alt="SocialHub Logo"
-                            className="w-10 h-10 object-contain group-hover:scale-105 transition duration-200"
+                            className="h-8 w-auto object-contain group-hover:scale-105 transition duration-200"
                         />
-                        <span className="text-xl font-bold tracking-tight text-slate-800 group-hover:text-blue-600 transition duration-200">
+                        <span className="text-headline-md text-primary tracking-tight group-hover:opacity-80 transition duration-200">
                             SocialHub
                         </span>
                     </Link>
 
-                    {/* Navigation Links - Chỉ giữ các mục không có ở Top Header Nav */}
-                    <nav className="space-y-1.5">
-                        <Link to="/" className={navLinkClass("/")}>
-                            <Home className={navIconClass("/")} />
-                            <span>Bảng tin</span>
-                        </Link>
-                        <Link to="/reels" className={navLinkClass("/reels")}>
-                            <Film className={navIconClass("/reels")} />
-                            <span>Reels</span>
-                        </Link>
-                        <Link to="/groups" className={navLinkClass("/groups")}>
-                            <Layers className={navIconClass("/groups")} />
-                            <span>Nhóm</span>
-                        </Link>
+                    {/* Navigation Links */}
+                    <nav className="space-y-1.5 px-4 shrink-0">
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className={`flex items-center px-6 py-3.5 rounded-xl transition-all duration-300 group ${
+                                    isNavActive(item.path)
+                                        ? "bg-primary-container text-on-primary-container font-semibold"
+                                        : "text-on-surface-variant hover:bg-surface-container-high/60 hover:text-on-surface"
+                                }`}
+                            >
+                                <MaterialIcon
+                                    name={item.icon}
+                                    className={`mr-4 transition-opacity ${
+                                        isNavActive(item.path) ? "opacity-100" : "opacity-70 group-hover:opacity-100"
+                                    }`}
+                                />
+                                <span className="text-body-md">{item.label}</span>
+                            </Link>
+                        ))}
                     </nav>
-                </div>
 
-                {/* Phần thông tin user đăng nhập ở đáy Sidebar */}
-                <div className="pt-6 border-t border-slate-100 space-y-3">
-                    <Link
-                        to={`/profile/${user?.id}`}
-                        className="flex items-center space-x-3 cursor-pointer group hover:bg-slate-50 p-2.5 rounded-xl transition"
-                    >
-                        <img
-                            src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
-                            alt="Avatar"
-                            className="w-10 h-10 rounded-full border border-slate-200 object-cover"
-                        />
-                        <div className="truncate">
-                            <p className="font-semibold text-sm text-slate-800 group-hover:text-blue-600 transition">{user?.displayName}</p>
-                            <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+                    {/* Quick Access to Joined Groups (Truy cập nhanh Nhóm của bạn) */}
+                    <div className="flex-1 px-4 pt-4 border-t border-outline-variant/10 overflow-hidden flex flex-col min-h-0">
+                        <div className="flex items-center justify-between px-3 mb-2 shrink-0">
+                            <span className="font-label-sm text-[11px] text-on-surface-variant/70 uppercase tracking-wider">Nhóm của bạn</span>
+                            <Link to="/groups" className="text-[11px] text-primary hover:underline font-medium">Tất cả</Link>
                         </div>
-                    </Link>
 
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center justify-center space-x-2 bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-600 py-2.5 rounded-xl transition cursor-pointer text-sm border border-slate-200 hover:border-red-200"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span>Đăng xuất</span>
-                    </button>
+                        <div className="flex-1 overflow-y-auto space-y-1 pr-1 no-scrollbar">
+                            {joinedGroups.length > 0 ? (
+                                joinedGroups.slice(0, 5).map((g) => {
+                                    const targetId = g.id || g.groupId || g.group_id || g.group?.id;
+                                    const targetName = g.name || g.group?.name || "Nhóm";
+                                    const targetAvatar = g.avatar_url || g.avatarUrl || g.group?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${targetName}`;
+
+                                    if (!targetId) return null;
+
+                                    return (
+                                        <Link
+                                            key={targetId}
+                                            to={`/groups/${targetId}`}
+                                            className="flex items-center space-x-3 p-2 rounded-xl hover:bg-surface-container-high/60 transition group cursor-pointer"
+                                        >
+                                            <img
+                                                src={targetAvatar}
+                                                alt={targetName}
+                                                className="w-8 h-8 rounded-lg object-cover border border-outline-variant/20 shrink-0"
+                                            />
+                                            <span className="text-xs text-on-surface-variant group-hover:text-on-surface font-medium truncate">
+                                                {targetName}
+                                            </span>
+                                        </Link>
+                                    );
+                                })
+                            ) : (
+                                <p className="text-[11px] text-on-surface-variant/50 px-3 py-2 italic">Chưa tham gia nhóm nào.</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </aside>
 
-            {/* Top Navbar Header Cố Định (Desktop >= 768px) */}
-            <header className="hidden md:flex fixed top-0 right-0 left-64 h-14 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-6 items-center justify-end z-50 shadow-sm">
-                {/* Nhóm Icon Hành Động: Bạn bè -> Tin nhắn -> Thông báo */}
-                <TopHeaderNav />
+            {/* ═══ Desktop Header ═══ */}
+            <header className="hidden md:flex fixed top-0 right-0 left-72 h-20 bg-surface/40 dark:bg-surface-container/40 backdrop-blur-3xl z-40 items-center justify-end gap-6 px-8 shadow-[0_1px_8px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.15)]">
+                {/* Search Bar */}
+                <div className="flex items-center bg-surface-container-low/60 dark:bg-surface-container/60 rounded-full px-4 py-2 w-96 border border-outline-variant/10 mr-auto">
+                    <MaterialIcon name="search" className="text-outline" size={20} />
+                    <input
+                        className="bg-transparent border-none focus:ring-0 focus:outline-none text-sm px-3 w-full text-body-md text-on-surface placeholder:text-on-surface-variant/50"
+                        placeholder="Tìm kiếm bài viết, bạn bè..."
+                        type="text"
+                    />
+                </div>
+
+                {/* Action Icons, Theme Toggle & Profile Quick Access */}
+                <TopHeaderNav isDark={isDark} setIsDark={setIsDark} />
             </header>
 
-            {/* Bottom Navigation Bar Mobile (Chỉ hiện trên di động < 768px) */}
-            <nav className="md:hidden fixed bottom-0 inset-x-0 h-16 bg-white/95 backdrop-blur-md border-t border-slate-200/80 z-40 flex items-center justify-around px-2 shadow-lg active:touch-none select-none">
-                <Link to="/" className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition active:scale-95 ${location.pathname === "/" ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-800"}`}>
-                    <Home className="w-5 h-5" />
-                    <span className="text-[10px] mt-0.5 font-medium">Feed</span>
-                </Link>
-                <Link to="/friends" className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition active:scale-95 ${location.pathname.startsWith("/friends") ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-800"}`}>
-                    <Users className="w-5 h-5" />
-                    <span className="text-[10px] mt-0.5 font-medium">Bạn bè</span>
-                </Link>
-                <Link to="/reels" className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition active:scale-95 ${location.pathname.startsWith("/reels") ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-800"}`}>
-                    <Film className="w-5 h-5" />
-                    <span className="text-[10px] mt-0.5 font-medium">Reels</span>
-                </Link>
-                <Link to="/messages" className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition active:scale-95 ${location.pathname.startsWith("/messages") ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-800"}`}>
-                    <MessageSquare className="w-5 h-5" />
-                    <span className="text-[10px] mt-0.5 font-medium">Chat</span>
-                </Link>
-                <Link to="/notifications" className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition active:scale-95 relative ${location.pathname.startsWith("/notifications") ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-800"}`}>
-                    <div className="relative">
-                        <Bell className="w-5 h-5" />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1.5 bg-red-500 text-white font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                                {unreadCount > 9 ? "9+" : unreadCount}
-                            </span>
-                        )}
-                    </div>
-                    <span className="text-[10px] mt-0.5 font-medium">Thông báo</span>
-                </Link>
+            {/* ═══ Mobile Bottom Nav ═══ */}
+            <nav className="md:hidden fixed bottom-0 inset-x-0 h-16 bg-surface/90 dark:bg-surface-container/90 backdrop-blur-2xl border-t border-outline-variant/10 z-40 flex items-center justify-around px-2 select-none">
+                {[
+                    { path: "/", icon: "public", label: "Feed" },
+                    { path: "/friends", icon: "people", label: "Bạn bè" },
+                    { path: "/reels", icon: "motion_photos_on", label: "Reels" },
+                    { path: "/messages", icon: "chat_bubble", label: "Chat" },
+                    { path: "/notifications", icon: "notifications", label: "TB" },
+                ].map((item) => (
+                    <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`flex flex-col items-center justify-center w-14 h-12 rounded-xl transition active:scale-95 ${
+                            isNavActive(item.path) ? "text-primary font-bold" : "text-on-surface-variant hover:text-on-surface"
+                        }`}
+                    >
+                        <div className="relative">
+                            <MaterialIcon name={item.icon} size={22} filled={isNavActive(item.path)} />
+                            {item.path === "/notifications" && unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1.5 bg-error text-on-error font-bold text-[9px] w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                                    {unreadCount > 9 ? "9+" : unreadCount}
+                                </span>
+                            )}
+                        </div>
+                        <span className="text-[10px] mt-0.5 font-medium">{item.label}</span>
+                    </Link>
+                ))}
             </nav>
 
-            {/* Nội dung chính bên phải */}
-            <main className={`flex-1 ml-0 md:ml-64 lg:mr-64 ${isMessagesPage ? "pt-14 pb-16 md:pt-14 md:pb-8 p-2 md:p-4 min-h-screen" :
-                    isReelsPage ? "fixed inset-0 top-14 bottom-16 md:static md:min-h-screen md:pt-14 md:pb-8 p-0 md:p-8" :
-                        "pt-16 pb-20 md:pt-16 md:pb-8 p-3 sm:p-6 md:p-8 min-h-screen"
-                }`}>
-                <div className={isMessagesPage ? "w-full h-full" : isReelsPage ? "w-full h-full flex justify-center items-center" : "max-w-4xl mx-auto"}>
-                    <Outlet /> {/* Nơi các trang con hiển thị */}
+            {/* ═══ Main Content Container (Offset by left 72 and right 64 on lg) ═══ */}
+            <main className={`flex-1 ml-0 md:ml-72 lg:pr-64 ${isMessagesPage ? "pt-14 pb-16 md:pt-20 md:pb-8 p-2 md:p-4 min-h-screen" :
+                    isReelsPage ? "fixed inset-0 top-14 bottom-16 md:static md:min-h-screen md:pt-20 md:pb-8 p-0 md:px-10" :
+                        "pt-16 pb-20 md:pt-24 md:pb-8 p-3 sm:p-6 md:px-8 min-h-screen"
+                } bg-gradient-to-br from-surface via-surface-container-lowest to-surface-container-low`}>
+                <div className={isMessagesPage ? "w-full h-full" : isReelsPage ? "w-full h-full flex justify-center items-center" : "max-w-3xl mx-auto"}>
+                    <Outlet />
                 </div>
             </main>
 
-            {/* Thanh chat sidebar bên phải và các ô chat nổi */}
+            {/* ═══ Chat Widget ═══ */}
             <ChatWidget />
         </div>
     );

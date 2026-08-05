@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import api from "../services/api";
-import { X, Video, Upload, Loader } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 
 const CreateReelModal = ({ onClose, onUploadSuccess }) => {
   const [videoFile, setVideoFile] = useState(null);
@@ -15,12 +15,10 @@ const CreateReelModal = ({ onClose, onUploadSuccess }) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("video/")) {
-        alert("Vui lòng chọn tệp tin video hợp lệ!");
         return;
       }
       // Giới hạn dung lượng video khoảng 50MB để chạy mượt local
       if (file.size > 50 * 1024 * 1024) {
-        alert("Dung lượng video vượt quá 50MB. Vui lòng chọn tệp nhỏ hơn!");
         return;
       }
       setVideoFile(file);
@@ -38,7 +36,6 @@ const CreateReelModal = ({ onClose, onUploadSuccess }) => {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       if (!file.type.startsWith("video/")) {
-        alert("Vui lòng chọn tệp tin video hợp lệ!");
         return;
       }
       setVideoFile(file);
@@ -93,12 +90,9 @@ const CreateReelModal = ({ onClose, onUploadSuccess }) => {
       });
 
       if (reelRes.data && reelRes.data.success) {
-        alert("Đăng thước phim Reels thành công!");
         onUploadSuccess();
       }
     } catch (err) {
-      console.error("❌ Lỗi đăng tải Reel:", err.message);
-      alert(err.response?.data?.message || "Đã xảy ra lỗi trong quá trình tải thước phim lên!");
     } finally {
       setIsUploading(false);
     }

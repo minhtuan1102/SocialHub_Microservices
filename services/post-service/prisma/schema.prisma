@@ -25,6 +25,8 @@ model Post {
   updated_at       DateTime  @default(now()) @db.Timestamptz(6)
   group_id         String?   @db.Uuid
   status           String?   @default("approved") @db.VarChar(20)
+  comments_disabled Boolean? @default(false)
+  rejection_reason String?
 
   // Relations
   original_post    Post?     @relation("SharedPosts", fields: [original_post_id], references: [id])

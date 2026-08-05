@@ -1,10 +1,12 @@
 import { useState } from "react";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
-import { X, UserPlus, UserMinus } from "lucide-react";
+import { useConfirm } from "../../context/ConfirmContext";
+import MaterialIcon from "../MaterialIcon";
 
 const GroupMembersModal = ({ conversation, onClose, onGroupUpdated, friends }) => {
     const { user: currentUser } = useAuth();
+    const confirm = useConfirm();
     const [isAdding, setIsAdding] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
 
@@ -26,18 +28,20 @@ const GroupMembersModal = ({ conversation, onClose, onGroupUpdated, friends }) =
             const res = await api.post(`/groups/${groupId}/members`, { userId: friendId });
             if (res.data && res.data.success) {
                 onGroupUpdated(res.data.data);
-                alert("Đã thêm thành viên thành công!");
             }
         } catch (err) {
-            console.error("❌ Lỗi thêm thành viên vào nhóm:", err);
-            alert(err.response?.data?.message || "Không thể thêm thành viên!");
         } finally {
             setIsAdding(false);
         }
     };
 
     const handleRemoveMember = async (memberId) => {
-        const confirmRemove = window.confirm("Bạn có chắc chắn muốn mời thành viên này rời khỏi nhóm?");
+        const confirmRemove = await confirm({
+            title: "Mời thành viên rời nhóm",
+            message: "Bạn có chắc chắn muốn mời thành viên này rời khỏi nhóm chat không?",
+            confirmText: "Mời rời nhóm",
+            type: "danger"
+        });
         if (!confirmRemove) return;
 
         setIsRemoving(true);
@@ -45,11 +49,8 @@ const GroupMembersModal = ({ conversation, onClose, onGroupUpdated, friends }) =
             const res = await api.delete(`/groups/${groupId}/members/${memberId}`);
             if (res.data && res.data.success) {
                 onGroupUpdated(res.data.data.group);
-                alert("Đã xóa thành viên khỏi nhóm.");
             }
         } catch (err) {
-            console.error("❌ Lỗi xóa thành viên khỏi nhóm:", err);
-            alert(err.response?.data?.message || "Không thể xóa thành viên!");
         } finally {
             setIsRemoving(false);
         }

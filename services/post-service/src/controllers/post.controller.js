@@ -84,3 +84,15 @@ export const getUserPosts = async (req, res) => {
     return handleError(res, error, 'Get User Posts Error');
   }
 };
+
+export const toggleComments = async (req, res) => {
+  try {
+    const post = await postService.toggleComments({
+      id: req.params.id,
+      userId: req.user.id
+    });
+    return successResponse(res, 200, post);
+  } catch (error) {
+    return handleError(res, error, 'Toggle Comments Error');
+  }
+};

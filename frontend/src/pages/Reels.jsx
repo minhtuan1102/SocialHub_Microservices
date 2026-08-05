@@ -1,24 +1,9 @@
 import {useState, useEffect, useRef} from "react";
 import {useSearchParams} from "react-router-dom";
 import {useAuth} from "../context/AuthContext";
+import {useConfirm} from "../context/ConfirmContext";
 import api from "../services/api";
-import {
-  Heart,
-  MessageCircle,
-  Share2,
-  Volume2,
-  VolumeX,
-  Plus,
-  Loader,
-  Send,
-  X,
-  Play,
-  Pause,
-  ChevronDown,
-  Film,
-  MessageSquareCode,
-  Trash2
-} from "lucide-react";
+import MaterialIcon from "../components/MaterialIcon";
 import CreateReelModal from "../components/CreateReelModal";
 import ShareModal from "../components/ShareModal";
 import HlsVideoPlayer from "../components/HlsVideoPlayer";
@@ -111,115 +96,104 @@ const ReelItem = ({reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenComm
       {/* Hiệu ứng Trái tim đập khi Double Click */}
       {showHeartAnimation && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 animate-ping">
-          <Heart className="w-24 h-24 text-red-500 fill-red-500 opacity-90 animate-bounce" />
+          <MaterialIcon name="favorite" filled className="text-error text-[96px] opacity-90 animate-bounce" />
         </div>
       )}
 
       {/* Nút Play hiển thị chính giữa khi tạm dừng video */}
       {!isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="w-16 h-16 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-2xl scale-100 transition duration-200">
-            <Play className="w-7 h-7 fill-white ml-1" />
+          <div className="w-20 h-20 rounded-full bg-surface-container-low/30 backdrop-blur-md flex items-center justify-center text-white border border-white/20 shadow-2xl scale-100 transition duration-200">
+            <MaterialIcon name="play_arrow" filled className="text-white text-[40px]" />
           </div>
         </div>
       )}
 
-      {/* Chỉ báo cuộn lên/xuống (Scroll Indicator) */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-white/90 text-[10px] z-30 pointer-events-none animate-bounce shadow-md">
-        <ChevronDown className="w-3.5 h-3.5 text-violet-400 animate-pulse" />
+      {/* Chỉ báo cuộn lên/xuống */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 bg-surface-container-low/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-white/90 text-[10px] z-30 pointer-events-none animate-bounce shadow-md">
+        <MaterialIcon name="expand_more" className="text-primary-container animate-pulse" size={16} />
         <span>Vuốt để xem Reels tiếp</span>
       </div>
 
       {/* Nút bật/tắt tiếng âm thanh */}
       <button
         onClick={toggleMute}
-        className="absolute top-3 right-3 p-2.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border border-white/10 text-white cursor-pointer z-30 transition duration-150 active:scale-95"
+        className="absolute top-3 right-3 p-2.5 rounded-full bg-surface-container-low/30 backdrop-blur-md hover:bg-surface-container-low/50 border border-white/10 text-white cursor-pointer z-30 transition duration-150 active:scale-95"
       >
-        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        <MaterialIcon name={isMuted ? "volume_off" : "volume_up"} size={18} />
       </button>
 
-      {/* Phần thông tin tác giả và mô tả ở góc dưới bên trái */}
-      <div className="absolute bottom-8 left-3 sm:left-4 right-14 text-left space-y-1.5 z-30 max-w-[78%] sm:max-w-[80%] pointer-events-auto break-words">
-        <div className="flex items-center space-x-2">
+      {/* Phần thông tin tác giả và mô tả */}
+      <div className="absolute bottom-8 left-4 right-20 text-left space-y-2 z-30 max-w-[78%] sm:max-w-[80%] pointer-events-auto break-words text-white">
+        <div className="flex items-center space-x-3 mb-2">
           <img
             src={reel.author?.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${reel.author_id}`}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-white/20 shadow-md shrink-0"
+            className="w-10 h-10 rounded-full object-cover border-2 border-white/30 shadow-md shrink-0"
             alt="Author Avatar"
           />
           <div className="min-w-0 flex-1">
-            <span className="font-bold text-xs sm:text-sm text-white drop-shadow-md block truncate">{reel.author?.displayName || "Người dùng"}</span>
-            <span className="text-[10px] text-white/70 block drop-shadow-sm">{viewCount} lượt xem</span>
+            <h3 className="font-headline-md text-[18px] font-semibold leading-tight text-white drop-shadow-md truncate">{reel.author?.displayName || "Người dùng"}</h3>
+            <p className="font-label-sm text-xs opacity-80 text-white/90">{viewCount} lượt xem</p>
           </div>
         </div>
         {reel.content && (
-          <p className="text-[11px] sm:text-xs text-white/90 leading-relaxed font-medium line-clamp-3 drop-shadow-md select-text break-words">
+          <p className="font-body-md text-sm leading-relaxed line-clamp-3 text-white/90 drop-shadow-sm select-text break-words">
             {reel.content}
           </p>
         )}
       </div>
 
-      {/* Cột các nút tương tác bên phải (Like, Comment, Share) */}
-      <div className="absolute bottom-8 right-2.5 sm:right-3 flex flex-col items-center space-y-4 sm:space-y-5 z-30 pointer-events-auto">
-        {/* Nút Like (Heart) */}
-        <div className="flex flex-col items-center text-center space-y-1">
-          <button
-            onClick={() => onLikeToggle(reel.id)}
-            className={`p-3 rounded-full backdrop-blur-md border transition duration-300 cursor-pointer shadow-lg active:scale-90 ${reel.isLikedByMe
-                ? "bg-red-500/90 text-white border-red-500"
-                : "bg-black/40 text-white border-white/10 hover:bg-black/60"
-              }`}
-          >
-            <Heart className={`w-5 h-5 ${reel.isLikedByMe ? "fill-white" : ""}`} />
-          </button>
-          <span className="text-[10px] font-bold text-white drop-shadow-md">{likeCount}</span>
-        </div>
+      {/* Cột các nút tương tác bên phải */}
+      <div className="absolute bottom-12 right-6 flex flex-col gap-6 z-30 items-center pointer-events-auto">
+        {/* Nút Like */}
+        <button onClick={() => onLikeToggle(reel.id)} className="flex flex-col items-center gap-1 group/btn cursor-pointer">
+          <div className={`w-12 h-12 rounded-full backdrop-blur-xl flex items-center justify-center border transition-all duration-300 group-hover/btn:scale-110 ${
+            reel.isLikedByMe
+              ? "bg-error-container/60 border-error text-error"
+              : "bg-surface-container-low/20 border-white/10 text-white group-hover/btn:bg-error-container/40"
+          }`}>
+            <MaterialIcon name="favorite" filled={reel.isLikedByMe} className="text-white group-hover/btn:text-error transition-colors" size={22} />
+          </div>
+          <span className="font-label-sm text-xs text-white/90 drop-shadow-md">{likeCount}</span>
+        </button>
 
-        {/* Nút bình luận */}
-        <div className="flex flex-col items-center text-center space-y-1">
-          <button
-            onClick={() => onOpenComments(reel)}
-            className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 text-white transition duration-300 cursor-pointer shadow-lg active:scale-90"
-          >
-            <MessageCircle className="w-5 h-5" />
-          </button>
-          <span className="text-[10px] font-bold text-white drop-shadow-md">{commentCount}</span>
-        </div>
+        {/* Nút Bình luận */}
+        <button onClick={() => onOpenComments(reel)} className="flex flex-col items-center gap-1 group/btn cursor-pointer">
+          <div className="w-12 h-12 rounded-full bg-surface-container-low/20 backdrop-blur-xl flex items-center justify-center border border-white/10 text-white transition-all duration-300 group-hover/btn:scale-110 group-hover/btn:bg-primary-container/40">
+            <MaterialIcon name="chat_bubble" size={22} className="text-white transition-colors" />
+          </div>
+          <span className="font-label-sm text-xs text-white/90 drop-shadow-md">{commentCount}</span>
+        </button>
 
-        {/* Nút chia sẻ */}
-        <div className="flex flex-col items-center text-center space-y-1">
-          <button
-            onClick={() => onShare(reel)}
-            className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 text-white transition duration-300 cursor-pointer shadow-lg active:scale-90"
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
-          <span className="text-[10px] font-bold text-white drop-shadow-md">{shareCount}</span>
-        </div>
+        {/* Nút Chia sẻ */}
+        <button onClick={() => onShare(reel)} className="flex flex-col items-center gap-1 group/btn cursor-pointer">
+          <div className="w-12 h-12 rounded-full bg-surface-container-low/20 backdrop-blur-xl flex items-center justify-center border border-white/10 text-white transition-all duration-300 group-hover/btn:scale-110 group-hover/btn:bg-secondary-container/40">
+            <MaterialIcon name="share" size={22} className="text-white transition-colors" />
+          </div>
+          <span className="font-label-sm text-xs text-white/90 drop-shadow-md">{shareCount}</span>
+        </button>
 
-        {/* Nút Xóa Reel (Chỉ dành cho chủ sở hữu) */}
+        {/* Nút Xóa Reel */}
         {isOwner && (
-          <button
-            onClick={() => onDelete(reel.id)}
-            title="Xóa thước phim này"
-            className="p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 hover:text-red-400 text-white transition duration-300 cursor-pointer shadow-lg active:scale-90"
-          >
-            <Trash2 className="w-5 h-5" />
+          <button onClick={() => onDelete(reel.id)} title="Xóa thước phim" className="flex flex-col items-center gap-1 group/btn cursor-pointer">
+            <div className="w-12 h-12 rounded-full bg-surface-container-low/20 backdrop-blur-xl flex items-center justify-center border border-white/10 text-white transition-all duration-300 group-hover/btn:scale-110 group-hover/btn:bg-error/40">
+              <MaterialIcon name="delete" size={22} className="text-white" />
+            </div>
+            <span className="font-label-sm text-[10px] text-white/80">Xóa</span>
           </button>
         )}
       </div>
 
-      {/* Thanh Scrubber / Tua video chuẩn Facebook Reels ở đáy */}
+      {/* Thanh progress bar */}
       <div className="absolute bottom-0 left-0 right-0 z-20 px-3 pb-1 pt-3 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col space-y-1 pointer-events-auto">
         <div
           className="relative w-full h-1.5 hover:h-2.5 bg-white/20 hover:bg-white/30 rounded-full cursor-pointer transition-all duration-150 group"
           onClick={handleSeek}
         >
-          {/* Thanh tiến trình đã phát */}
           <div
-            className="h-full bg-violet-500 rounded-full relative group-hover:bg-violet-400"
+            className="h-full bg-primary-container rounded-full relative group-hover:bg-primary"
             style={{width: `${duration ? (currentTime / duration) * 100 : 0}%`}}
           >
-            {/* Núm tròn chỉ báo khi hover */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         </div>
@@ -237,7 +211,8 @@ const ReelItem = ({reel, isActive, isMuted, toggleMute, onLikeToggle, onOpenComm
 
 // Component chính trang Reels
 const Reels = () => {
-  const { user } = useAuth();
+  const {user} = useAuth();
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const targetReelId = searchParams.get("id");
 
@@ -433,8 +408,6 @@ const Reels = () => {
         }) : null);
       }
     } catch (err) {
-      console.error("❌ Lỗi tạo bình luận Reel:", err.message);
-      alert("Không thể đăng bình luận!");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -455,7 +428,13 @@ const Reels = () => {
 
   // Xóa Reel dành cho chủ sở hữu
   const handleDeleteReel = async (reelId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa thước phim này? Thao tác này không thể hoàn tác.")) return;
+    const isConfirmed = await confirm({
+      title: "Xóa thước phim",
+      message: "Bạn có chắc chắn muốn xóa thước phim này? Thao tác này không thể hoàn tác.",
+      confirmText: "Xóa thước phim",
+      type: "danger"
+    });
+    if (!isConfirmed) return;
 
     try {
       const res = await api.delete(`/reels/${reelId}`);
@@ -466,32 +445,29 @@ const Reels = () => {
           setSelectedCommentReel(null);
         }
       }
-    } catch (err) {
-      console.error("❌ Lỗi xóa Reel:", err.message);
-      alert(err.response?.data?.message || "Không thể xóa thước phim này!");
-    }
+    } catch (err) {}
   };
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center relative select-none py-2 md:py-0">
 
       {/* Header bar trên Reels Player */}
-      <div className="w-full max-w-[420px] flex justify-between items-center mb-2.5 px-2 sm:px-0">
-        <h2 className="text-lg md:text-xl font-extrabold text-slate-800 tracking-tight flex items-center space-x-2">
-          <Film className="w-5 h-5 text-violet-600" />
-          <span>Reels</span>
+      <div className="w-full max-w-[500px] flex justify-between items-center mb-4 px-2 sm:px-0">
+        <h2 className="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+          <MaterialIcon name="motion_photos_on" className="text-primary" size={28} />
+          <span>Thước phim</span>
         </h2>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:opacity-90 active:scale-95 text-white font-bold rounded-xl text-xs shadow-md shadow-violet-500/20 cursor-pointer transition duration-150"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-container hover:opacity-90 active:scale-95 text-on-primary font-label-sm text-label-sm rounded-xl shadow-md cursor-pointer transition"
         >
-          <Plus className="w-4 h-4" />
+          <MaterialIcon name="add" size={18} />
           <span>Tạo Reels</span>
         </button>
       </div>
 
-      {/* Frame bọc ngoài cố định không cuộn */}
-      <div className="w-full h-[calc(100vh-11rem)] md:max-w-[420px] md:h-[78vh] md:rounded-2xl border-0 md:border border-slate-800 shadow-2xl relative bg-slate-950 flex flex-col overflow-hidden">
+      {/* Frame bọc ngoài Reels card (reelsscreen.html design) */}
+      <div className="w-full h-[calc(100vh-11rem)] md:max-w-[500px] md:h-[80vh] md:min-h-[600px] md:rounded-[40px] shadow-[0_20px_60px_rgba(142,148,242,0.15)] border border-outline-variant/10 relative bg-surface-container-lowest dark:bg-surface-container-low flex flex-col overflow-hidden group">
 
         {/* Khung chứa các Video cuộn dọc */}
         <div
@@ -499,8 +475,8 @@ const Reels = () => {
           className="w-full h-full snap-y snap-mandatory overflow-y-scroll scrollbar-none flex flex-col"
         >
           {isLoading && reels.length === 0 ? (
-            <div className="flex-1 flex flex-col justify-center items-center text-slate-400 space-y-3">
-              <Loader className="w-8 h-8 text-violet-500 animate-spin" />
+            <div className="flex-1 flex flex-col justify-center items-center text-on-surface-variant space-y-3">
+              <MaterialIcon name="progress_activity" className="text-primary animate-spin" size={32} />
               <p className="text-xs">Đang chuẩn bị thước phim...</p>
             </div>
           ) : reels.length > 0 ? (
@@ -525,81 +501,81 @@ const Reels = () => {
                       currentUserId={user?.id}
                     />
                   ) : (
-                    <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-600 space-y-2">
-                      <Loader className="w-6 h-6 animate-spin text-slate-700" />
+                    <div className="w-full h-full bg-surface-container-low flex flex-col items-center justify-center text-on-surface-variant space-y-2">
+                      <MaterialIcon name="progress_activity" className="animate-spin text-outline" size={24} />
                     </div>
                   )}
                 </div>
               );
             })
           ) : (
-            <div className="flex-1 flex flex-col justify-center items-center text-slate-500 text-xs italic space-y-4 p-8 text-center">
+            <div className="flex-1 flex flex-col justify-center items-center text-on-surface-variant text-xs italic space-y-4 p-8 text-center">
               <p>Chưa có Reels nào được đăng tải.</p>
               <p>Hãy trở thành người đầu tiên chia sẻ thước phim ngắn của bạn!</p>
             </div>
           )}
         </div>
 
-        {/* Ngăn kéo Bình luận (Comment Drawer) trượt lên trên khung cố định, nằm ngoài scroll container */}
+        {/* Ngăn kéo Bình luận (Comment Drawer) */}
         {commentDrawerOpen && selectedCommentReel && (
-          <div className="absolute inset-x-0 bottom-0 h-[65%] bg-slate-900/95 backdrop-blur-md rounded-t-2xl z-50 flex flex-col border-t border-white/10 shadow-2xl animate-slideUp">
+          <div className="absolute inset-x-0 bottom-0 h-[65%] bg-surface-container-lowest/95 dark:bg-surface-container-high/95 backdrop-blur-2xl rounded-t-3xl z-50 flex flex-col border-t border-outline-variant/10 shadow-2xl animate-slide-up">
 
             {/* Header Drawer */}
-            <div className="flex justify-between items-center px-4 py-3 border-b border-white/10">
-              <span className="text-xs font-bold text-white flex items-center space-x-1.5">
-                <MessageSquareCode className="w-4 h-4 text-violet-500" />
+            <div className="flex justify-between items-center px-6 py-4 border-b border-outline-variant/10">
+              <span className="font-headline-md text-sm text-on-surface flex items-center gap-2">
+                <MaterialIcon name="chat_bubble" className="text-primary" size={18} />
                 <span>Bình luận ({selectedCommentReel.comment_count || 0})</span>
               </span>
               <button
                 onClick={() => setCommentDrawerOpen(false)}
-                className="p-1 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition cursor-pointer"
+                className="p-1 hover:bg-surface-container-high rounded-full text-on-surface-variant hover:text-on-surface transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <MaterialIcon name="close" size={18} />
               </button>
             </div>
 
             {/* Danh sách bình luận */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3.5 select-text">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3.5 select-text">
               {comments.length > 0 ? (
                 comments.map((comment, i) => (
-                  <div key={comment.id || i} className="flex items-start space-x-2.5">
+                  <div key={comment.id || i} className="flex items-start space-x-3">
                     <img
                       src={comment.author?.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${comment.author_id}`}
-                      className="w-7 h-7 rounded-full object-cover border border-white/10 mt-0.5"
+                      className="w-8 h-8 rounded-full object-cover border border-outline-variant/20 mt-0.5"
                       alt="Avatar"
                     />
-                    <div className="flex-1 bg-white/5 border border-white/5 px-3 py-2 rounded-xl text-left">
-                      <span className="font-bold text-[10px] text-violet-400 block mb-0.5">{comment.author?.displayName || "Người dùng"}</span>
-                      <p className="text-xs text-slate-200 leading-normal whitespace-pre-wrap">{comment.content}</p>
+                    <div className="flex-1 bg-surface-container-low/60 border border-outline-variant/10 px-3.5 py-2.5 rounded-2xl text-left">
+                      <span className="font-bold text-xs text-primary block mb-0.5">{comment.author?.displayName || "Người dùng"}</span>
+                      <p className="text-xs text-on-surface leading-normal whitespace-pre-wrap">{comment.content}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="h-full flex items-center justify-center text-slate-500 text-[10px] italic">
+                <div className="h-full flex items-center justify-center text-on-surface-variant/60 text-xs italic">
                   Chưa có bình luận nào. Hãy bình luận đầu tiên!
                 </div>
               )}
             </div>
 
             {/* Ô gõ bình luận chân Drawer */}
-            <form onSubmit={handlePostComment} className="p-3 border-t border-white/10 flex items-center space-x-2">
+            <form onSubmit={handlePostComment} className="p-4 border-t border-outline-variant/10 flex items-center space-x-2">
               <input
                 type="text"
                 value={commentInput}
                 onChange={(e) => setCommentInput(e.target.value)}
                 placeholder="Nói gì đó về thước phim này..."
                 disabled={isSubmittingComment}
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-550 focus:outline-none focus:border-violet-500 transition disabled:opacity-50"
+                className="flex-1 bg-surface-container-low/60 border border-outline-variant/10 rounded-xl px-4 py-2 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={isSubmittingComment || !commentInput.trim()}
-                className="p-2.5 bg-violet-600 disabled:opacity-50 hover:bg-violet-750 text-white rounded-xl cursor-pointer transition active:scale-95 shadow-md shadow-violet-600/10"
+                className="p-2.5 bg-primary disabled:opacity-50 hover:bg-primary/90 text-on-primary rounded-xl cursor-pointer transition active:scale-95 shadow-md flex items-center justify-center"
               >
                 {isSubmittingComment ? (
-                  <Loader className="w-3.5 h-3.5 animate-spin" />
+                  <MaterialIcon name="progress_activity" size={16} className="animate-spin" />
                 ) : (
-                  <Send className="w-3.5 h-3.5" />
+                  <MaterialIcon name="send" size={16} />
                 )}
               </button>
             </form>
