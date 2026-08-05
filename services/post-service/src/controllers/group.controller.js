@@ -176,11 +176,43 @@ export const rejectPost = async (req, res) => {
     const result = await groupService.rejectPost(
       req.params.id,
       req.params.postId,
-      req.user.id
+      req.user.id,
+      req.body?.reason || req.body?.rejectionReason
     );
     return successResponse(res, 200, result);
   } catch (error) {
     return handleError(res, error, 'Reject Post Error');
+  }
+};
+
+export const updateGroupSettings = async (req, res) => {
+  try {
+    const group = await groupService.updateGroupSettings(
+      req.params.id,
+      {
+        postApprovalRequired: req.body.postApprovalRequired,
+        name: req.body.name,
+        description: req.body.description,
+        privacy: req.body.privacy
+      },
+      req.user.id
+    );
+    return successResponse(res, 200, group);
+  } catch (error) {
+    return handleError(res, error, 'Update Group Settings Error');
+  }
+};
+
+export const deletePostInGroup = async (req, res) => {
+  try {
+    const result = await groupService.deletePostInGroup(
+      req.params.id,
+      req.params.postId,
+      req.user.id
+    );
+    return successResponse(res, 200, result);
+  } catch (error) {
+    return handleError(res, error, 'Delete Post In Group Error');
   }
 };
 

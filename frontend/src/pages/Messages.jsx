@@ -1,6 +1,7 @@
 import {useState, useEffect, useRef} from "react";
 import {useNavigate} from "react-router-dom";
 import {useAuth} from "../context/AuthContext";
+import {useConfirm} from "../context/ConfirmContext";
 import {useSocket} from "../context/SocketContext";
 import api from "../services/api";
 import ImageLightboxModal from "../components/ImageLightboxModal";
@@ -9,21 +10,7 @@ import ChatMedia from "../components/chat/ChatMedia";
 import RenderShareMessage from "../components/chat/RenderShareMessage";
 import GroupMembersModal from "../components/chat/GroupMembersModal";
 import CreateGroupModal from "../components/chat/CreateGroupModal";
-import {
-    MessageSquare,
-    Send,
-    Image as ImageIcon,
-    Video,
-    Phone,
-    Users,
-    X,
-    Loader,
-    Trash2,
-    MessageSquarePlus,
-    UserPlus,
-    ArrowLeft,
-    Mic
-} from "lucide-react";
+import MaterialIcon from "../components/MaterialIcon";
 import VoiceMessagePlayer from "../components/chat/VoiceMessagePlayer";
 import VoiceRecorder from "../components/chat/VoiceRecorder";
 
@@ -49,6 +36,7 @@ const formatLastMessagePreview = (lastMsg) => {
 
 const Messages = () => {
     const {user: currentUser} = useAuth();
+    const confirm = useConfirm();
     const navigate = useNavigate();
     const {onlineUsers, setOnlineUsers, chatSocket, initiateCall} = useSocket();
 
@@ -134,7 +122,6 @@ const Messages = () => {
         // Join room khi mở hội thoại và tự động re-join khi socket reconnect
         const joinRoom = () => {
             chatSocket.emit("conversation:join", {conversationId: cId});
-            console.log(`📡 Đã kết nối & gửi yêu cầu join conversation room: ${cId}`);
         };
 
         joinRoom();
@@ -330,8 +317,6 @@ const Messages = () => {
                 });
             }
         } catch (err) {
-            console.error("❌ Lỗi gửi tin nhắn thoại:", err.message);
-            alert("Không thể gửi tin nhắn thoại. Vui lòng thử lại!");
         } finally {
             setIsSending(false);
         }
@@ -400,8 +385,6 @@ const Messages = () => {
                 scrollToBottom("smooth");
             }, 50);
         } catch (err) {
-            console.error("❌ Lỗi gửi tin nhắn:", err.message);
-            alert("Không thể gửi tin nhắn. Vui lòng thử lại!");
         } finally {
             setIsSending(false);
         }
@@ -438,7 +421,12 @@ const Messages = () => {
     // 5b. Xóa cuộc trò chuyện
     const handleDeleteConversation = async (e, convId) => {
         e.stopPropagation();
-        const confirmDelete = window.confirm("Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Mọi tin nhắn sẽ bị xóa vĩnh viễn và không thể khôi phục.");
+        const confirmDelete = await confirm({
+            title: "Xóa cuộc trò chuyện",
+            message: "Bạn có chắc chắn muốn xóa cuộc trò chuyện này? Mọi tin nhắn sẽ bị xóa vĩnh viễn và không thể khôi phục.",
+            confirmText: "Xóa vĩnh viễn",
+            type: "danger"
+        });
         if (!confirmDelete) return;
 
         try {
@@ -450,17 +438,13 @@ const Messages = () => {
                     setMessages([]);
                 }
             }
-        } catch (err) {
-            console.error("❌ Lỗi xóa cuộc trò chuyện:", err.message);
-            alert("Không thể xóa cuộc trò chuyện!");
-        }
+        } catch (err) {}
     };
 
     // 6. Tạo nhóm chat mới
     const handleCreateGroup = async (e) => {
         e.preventDefault();
         if (!groupName.trim() || selectedFriends.length === 0) {
-            alert("Vui lòng nhập tên nhóm và chọn ít nhất 1 thành viên!");
             return;
         }
 
@@ -476,10 +460,7 @@ const Messages = () => {
                 setSelectedFriends([]);
                 fetchConversations();
             }
-        } catch (err) {
-            console.error("❌ Lỗi tạo nhóm chat:", err.message);
-            alert("Không thể tạo nhóm chat!");
-        }
+        } catch (err) {}
     };
 
     // Helper trích xuất thông tin đối phương từ conversation
@@ -600,7 +581,7 @@ const Messages = () => {
                                             className="md:hidden p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition shrink-0"
                                             title="Quay lại"
                                         >
-                                            <ArrowLeft className="w-5 h-5" />
+                                            <MaterialIcon name="arrow_back" size={20} />
                                         </button>
                                         <img
                                             src={avatar}

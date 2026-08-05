@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import api from "../services/api";
-import { X, Image, Loader, Save } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 
 const EditPostModal = ({ post, imageUrl, onClose, onPostUpdated }) => {
     const [content, setContent] = useState(post.content || "");
@@ -50,7 +50,6 @@ const EditPostModal = ({ post, imageUrl, onClose, onPostUpdated }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!content.trim() && hasRemovedExistingImage && !newImageFile) {
-            alert("Nội dung bài viết không được để trống!");
             return;
         }
 
@@ -90,8 +89,6 @@ const EditPostModal = ({ post, imageUrl, onClose, onPostUpdated }) => {
                 onClose();
             }
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật bài viết:", error);
-            alert("Không thể cập nhật bài viết. Vui lòng thử lại!");
         } finally {
             setIsSubmitting(false);
             setIsUploading(false);

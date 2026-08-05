@@ -3,6 +3,8 @@ import {useParams, useNavigate} from "react-router-dom";
 import api from "../services/api";
 import PostCard from "../components/PostCard";
 import {useAuth} from "../context/AuthContext";
+import {useConfirm} from "../context/ConfirmContext";
+import MaterialIcon from "../components/MaterialIcon";
 import {Loader, Calendar, Mail, FileText, UserPlus, UserCheck, UserMinus, MessageSquare, Edit3, Camera, Save, X, Film, Clock, Trash2, Lock} from "lucide-react";
 import imageCompression from "browser-image-compression";
 import {formatRelativeTime} from "../utils/dateUtils";
@@ -28,7 +30,6 @@ const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!displayName.trim()) {
-            alert("Tên hiển thị không được để trống!");
             return;
         }
 
@@ -48,45 +49,31 @@ const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
                             useWebWorker: true,
                         });
                     } catch (err) {
-                        console.warn("[COMPRESS] Avatar fallback:", err.message);
                         fileToUpload = avatarFile;
                     }
                 }
                 const formData = new FormData();
                 formData.append("file", fileToUpload);
-                console.log("[PROFILE_UPDATE] Uploading avatar file:", avatarFile.name);
                 const uploadRes = await api.post("/media/upload", formData);
 
                 if (uploadRes.data && uploadRes.data.id) {
                     uploadedAvatarUrl = `/media/file/${uploadRes.data.id}`;
-                    console.log("[PROFILE_UPDATE] Avatar uploaded successfully, relative path:", uploadedAvatarUrl);
-                } else {
-                    console.warn("[PROFILE_UPDATE] Upload succeeded but no ID returned:", uploadRes.data);
                 }
                 setIsUploading(false);
             }
 
             // 2. Cập nhật profile người dùng qua user-service
-            console.log(`[PROFILE_UPDATE] Sending update request for user ${profileUser.id}:`, {
-                name: displayName.trim(),
-                bio: bio.trim(),
-                avatarUrl: uploadedAvatarUrl
-            });
             const updateRes = await api.put(`/users/${profileUser.id}`, {
                 name: displayName.trim(),
                 bio: bio.trim(),
                 avatarUrl: uploadedAvatarUrl
             });
 
-            console.log("[PROFILE_UPDATE] Update response received:", updateRes.data);
-
             if (updateRes.data && updateRes.data.success) {
                 onProfileUpdated(updateRes.data.user);
                 onClose();
             }
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật trang cá nhân:", error);
-            alert(error.response?.data?.message || "Không thể cập nhật trang cá nhân. Vui lòng thử lại!");
         } finally {
             setIsSubmitting(false);
             setIsUploading(false);
@@ -102,15 +89,15 @@ const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
     }, [avatarFile, avatarPreview]);
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fadeIn">
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
-                    <h3 className="font-bold text-slate-800 text-sm">Chỉnh sửa trang cá nhân</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-surface-container-lowest dark:bg-surface-container-high border border-outline-variant/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-slide-up">
+                <div className="flex items-center justify-between p-6 border-b border-outline-variant/10 bg-surface-container-low/40">
+                    <h3 className="font-headline-md text-sm text-on-surface">Chỉnh sửa trang cá nhân</h3>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-700 transition cursor-pointer p-1 rounded-lg hover:bg-slate-200"
+                        className="text-on-surface-variant hover:text-on-surface transition cursor-pointer p-1 rounded-full hover:bg-surface-container-high"
                     >
-                        <X className="w-4 h-4" />
+                        <MaterialIcon name="close" size={18} />
                     </button>
                 </div>
 
@@ -120,10 +107,10 @@ const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
                             <img
                                 src={avatarPreview || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
                                 alt="Avatar Preview"
-                                className="w-24 h-24 rounded-full object-cover border-2 border-blue-500/50 shadow-md group-hover:opacity-85 transition"
+                                className="w-24 h-24 rounded-full object-cover border-2 border-primary/50 shadow-md group-hover:opacity-85 transition"
                             />
                             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                <Camera className="w-6 h-6 text-white" />
+                                <MaterialIcon name="photo_camera" className="text-white" size={24} />
                             </div>
                         </div>
                         <input
@@ -133,51 +120,51 @@ const EditProfileModal = ({profileUser, onClose, onProfileUpdated}) => {
                             onChange={handleAvatarChange}
                             className="hidden"
                         />
-                        <span className="text-[10px] text-slate-500 font-semibold uppercase">Nhấp để đổi ảnh đại diện</span>
+                        <span className="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Nhấp để đổi ảnh đại diện</span>
                     </div>
 
                     <div className="space-y-1">
-                        <label className="block text-[10px] text-slate-500 font-semibold uppercase">Họ và tên</label>
+                        <label className="block font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Họ và tên</label>
                         <input
                             type="text"
                             value={displayName}
                             onChange={(e) => setDisplayName(e.target.value)}
                             placeholder="Nhập tên hiển thị..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 transition"
+                            className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-xl px-4 py-2.5 text-xs text-on-surface focus:outline-none focus:border-primary transition"
                             required
                         />
                     </div>
 
                     <div className="space-y-1">
-                        <label className="block text-[10px] text-slate-500 font-semibold uppercase">Tiểu sử (Bio)</label>
+                        <label className="block font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest">Tiểu sử (Bio)</label>
                         <textarea
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
                             placeholder="Giới thiệu ngắn về bản thân..."
                             rows={3}
                             maxLength={200}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 transition resize-none"
+                            className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-xl px-4 py-2.5 text-xs text-on-surface focus:outline-none focus:border-primary transition resize-none"
                         />
-                        <span className="block text-[9px] text-right text-slate-400">{bio.length}/200 ký tự</span>
+                        <span className="block text-[9px] text-right text-on-surface-variant/60">{bio.length}/200 ký tự</span>
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                    <div className="flex justify-end space-x-2 pt-4 border-t border-outline-variant/10">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2 text-slate-650 hover:bg-slate-100 rounded-xl transition cursor-pointer text-xs font-semibold"
+                            className="px-5 py-2 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition cursor-pointer text-xs font-semibold"
                         >
                             Hủy bỏ
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || isUploading}
-                            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition cursor-pointer text-xs font-semibold shadow-md shadow-blue-600/10 flex items-center space-x-1.5 disabled:opacity-50"
+                            className="px-5 py-2 bg-primary hover:bg-primary/90 text-on-primary rounded-xl transition cursor-pointer text-xs font-semibold shadow-md flex items-center space-x-1.5 disabled:opacity-50"
                         >
                             {isSubmitting ? (
-                                <Loader className="w-4 h-4 animate-spin" />
+                                <MaterialIcon name="progress_activity" size={16} className="animate-spin" />
                             ) : (
-                                <Save className="w-4 h-4" />
+                                <MaterialIcon name="save" size={16} />
                             )}
                             <span>{isSubmitting ? (isUploading ? "Đang tải ảnh..." : "Đang lưu...") : "Cập nhật"}</span>
                         </button>
@@ -345,26 +332,26 @@ const ReelThumbnail = ({reel, onClick, isOwnProfile, onDelete}) => {
     return (
         <div
             onClick={onClick}
-            className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-slate-950 border border-slate-200 shadow-sm group cursor-pointer hover:scale-[1.01] hover:shadow-md transition duration-200"
+            className="relative aspect-[9/16] rounded-2xl overflow-hidden bg-surface-container-lowest dark:bg-surface-container-low border border-outline-variant/10 shadow-sm group cursor-pointer hover:scale-[1.02] hover:shadow-md transition duration-300"
         >
             {isLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60">
-                    <Loader className="w-5 h-5 text-blue-500 animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low/60">
+                    <MaterialIcon name="progress_activity" className="text-primary animate-spin" size={20} />
                 </div>
             ) : videoSrc ? (
                 <video
                     src={videoSrc}
                     muted
                     playsInline
-                    className="w-full h-full object-cover animate-fadeIn"
+                    className="w-full h-full object-cover animate-fade-in"
                 />
             ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-slate-500 text-[10px] italic">
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-container-low text-on-surface-variant text-[10px] italic">
                     Lỗi tải video
                 </div>
             )}
 
-            {/* Nút xóa Reel dành cho chủ sở hữu */}
+            {/* Nút xóa Reel */}
             {isOwnProfile && onDelete && (
                 <button
                     onClick={(e) => {
@@ -372,15 +359,15 @@ const ReelThumbnail = ({reel, onClick, isOwnProfile, onDelete}) => {
                         onDelete(reel.id);
                     }}
                     title="Xóa thước phim này"
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 hover:text-red-400 text-white border border-white/10 backdrop-blur-sm z-10 transition duration-150 active:scale-95 shadow-md"
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-surface-container-low/40 hover:bg-error-container/60 text-white backdrop-blur-sm z-10 transition duration-150 active:scale-95 shadow-md"
                 >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <MaterialIcon name="delete" size={14} />
                 </button>
             )}
 
             {/* Overlay số lượt xem */}
-            <div className="absolute bottom-2.5 left-2.5 flex items-center space-x-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full text-white text-[10px] font-bold select-none">
-                <span>▶</span>
+            <div className="absolute bottom-2.5 left-2.5 flex items-center space-x-1 bg-surface-container-low/40 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] font-bold select-none">
+                <MaterialIcon name="play_arrow" size={12} filled />
                 <span>{reel.view_count || 0}</span>
             </div>
         </div>
@@ -388,7 +375,8 @@ const ReelThumbnail = ({reel, onClick, isOwnProfile, onDelete}) => {
 };
 
 const Profile = () => {
-    const {id} = useParams(); // Lấy ID người dùng từ thanh địa chỉ /profile/:id
+    const {user: currentUser} = useAuth();
+    const confirm = useConfirm(); 
     const navigate = useNavigate();
     const {user: loggedInUser, setUser, logout} = useAuth();
 
@@ -449,8 +437,6 @@ const Profile = () => {
                 }
             }
         } catch (err) {
-            console.error("❌ Lỗi tải lên ảnh bìa:", err);
-            alert("Không thể tải lên ảnh bìa. Vui lòng thử lại!");
         } finally {
             setIsUploadingCover(false);
         }
@@ -463,9 +449,7 @@ const Profile = () => {
             if (res.data && res.data.success) {
                 setRelation({status: "pending_sent", requestId: res.data.data.id});
             }
-        } catch (err) {
-            alert(err.response?.data?.message || "Lỗi gửi yêu cầu!");
-        }
+        } catch (err) {}
     };
 
     // B. Hàm chấp nhận kết bạn
@@ -496,7 +480,13 @@ const Profile = () => {
 
     // D. Hàm hủy kết bạn
     const handleUnfriend = async () => {
-        if (!window.confirm("Bạn có chắc chắn muốn hủy kết bạn với người này?")) return;
+        const isConfirmed = await confirm({
+            title: "Hủy kết bạn",
+            message: "Bạn có chắc chắn muốn hủy kết bạn với người này?",
+            confirmText: "Hủy kết bạn",
+            type: "danger"
+        });
+        if (!isConfirmed) return;
         try {
             const res = await api.delete(`/friends/${id}`);
             if (res.data && res.data.success) {
@@ -521,16 +511,19 @@ const Profile = () => {
 
     // F. Xóa Reel của chính mình
     const handleDeleteReel = async (reelId) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa thước phim này? Thao tác này không thể hoàn tác.")) return;
+        const isConfirmed = await confirm({
+            title: "Xóa thước phim",
+            message: "Bạn có chắc chắn muốn xóa thước phim này? Thao tác này không thể hoàn tác.",
+            confirmText: "Xóa thước phim",
+            type: "danger"
+        });
+        if (!isConfirmed) return;
         try {
             const res = await api.delete(`/reels/${reelId}`);
             if (res.data && res.data.success) {
                 setUserReels(prev => prev.filter(r => r.id !== reelId));
             }
-        } catch (err) {
-            console.error("❌ Lỗi xóa Reel:", err);
-            alert(err.response?.data?.message || "Không thể xóa thước phim này!");
-        }
+        } catch (err) {}
     };
 
     useEffect(() => {
@@ -576,14 +569,14 @@ const Profile = () => {
     if (isLoading) {
         return (
             <div className="flex justify-center items-center py-24">
-                <Loader className="w-8 h-8 text-blue-600 animate-spin" />
+                <MaterialIcon name="progress_activity" className="text-primary animate-spin" size={36} />
             </div>
         );
     }
 
     if (!profileUser) {
         return (
-            <div className="text-center py-12 text-slate-500">
+            <div className="text-center py-12 text-on-surface-variant">
                 Không tìm thấy người dùng này hoặc tài khoản đã bị xóa.
             </div>
         );
@@ -591,10 +584,10 @@ const Profile = () => {
 
     return (
         <div className="space-y-8">
-            {/* Thẻ thông tin tài khoản với Cover Photo */}
-            <div className="relative bg-white border border-slate-200 rounded-2xl md:rounded-3xl overflow-hidden shadow-sm">
-                {/* Banner Ảnh Bìa (Cover Photo) */}
-                <div className="relative h-44 md:h-56 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 overflow-hidden">
+            {/* Vault Card (profilescreen.html) */}
+            <div className="relative bg-surface-container-low/60 dark:bg-surface-container-high/60 backdrop-blur-2xl border border-outline-variant/10 rounded-3xl overflow-hidden shadow-sm">
+                {/* Banner Ảnh Bìa */}
+                <div className="relative h-48 md:h-64 w-full bg-gradient-to-r from-primary-container via-surface-container-high to-secondary-container overflow-hidden">
                     {profileUser.coverUrl && !coverError ? (
                         <img
                             src={profileUser.coverUrl}
@@ -603,12 +596,12 @@ const Profile = () => {
                             onError={() => setCoverError(true)}
                         />
                     ) : (
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-secondary/20 to-primary-container/40 flex items-center justify-center">
                             <div className="absolute inset-0 bg-black/10 backdrop-blur-[2px]" />
                         </div>
                     )}
 
-                    {/* Nút Upload Ảnh Bìa (dành cho chủ sở hữu) */}
+                    {/* Nút Upload Ảnh Bìa */}
                     {isOwnProfile && (
                         <div className="absolute top-4 right-4 z-10">
                             <input
@@ -621,68 +614,70 @@ const Profile = () => {
                             <button
                                 onClick={() => coverInputRef.current?.click()}
                                 disabled={isUploadingCover}
-                                className="flex items-center space-x-1.5 px-3 py-1.5 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white rounded-xl text-xs font-medium cursor-pointer transition border border-white/20 shadow-lg disabled:opacity-50"
+                                className="flex items-center space-x-2 px-4 py-2 bg-surface-container-low/60 hover:bg-surface-container-high backdrop-blur-md text-on-surface rounded-full text-xs font-semibold cursor-pointer transition border border-white/20 shadow-md disabled:opacity-50"
                             >
                                 {isUploadingCover ? (
-                                    <Loader className="w-3.5 h-3.5 animate-spin" />
+                                    <MaterialIcon name="progress_activity" size={16} className="animate-spin text-primary" />
                                 ) : (
-                                    <Camera className="w-3.5 h-3.5" />
+                                    <MaterialIcon name="photo_camera" size={16} className="text-primary" />
                                 )}
-                                <span>{isUploadingCover ? "Đang tải..." : "Thêm ảnh bìa"}</span>
+                                <span>{isUploadingCover ? "Đang tải..." : "Đổi ảnh bìa"}</span>
                             </button>
                         </div>
                     )}
                 </div>
 
                 {/* Phần nội dung Profile (Avatar + Thông tin) */}
-                <div className="px-4 md:px-8 pb-6 md:pb-8 pt-0">
-                    <div className="flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-6 -mt-16 md:-mt-20 mb-4">
-                        {/* Avatar */}
+                <div className="px-6 md:px-10 pb-8 pt-0">
+                    <div className="flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-8 -mt-20 md:-mt-24 mb-6">
+                        {/* Avatar (profilescreen.html style: ring-1 ring-white/20 p-2 bg-surface-container-low/40 backdrop-blur-3xl) */}
                         <div className="relative z-10">
-                            <img
-                                src={profileUser.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
-                                alt="Profile Avatar"
-                                className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-white shadow-xl object-cover bg-white"
-                            />
+                            <div className="w-36 h-36 md:w-44 md:h-44 rounded-full p-2 bg-surface-container-low/40 backdrop-blur-3xl ring-1 ring-white/20 shadow-[0px_20px_60px_rgba(142,148,242,0.15)]">
+                                <img
+                                    src={profileUser.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
+                                    alt="Profile Avatar"
+                                    className="w-full h-full rounded-full object-cover bg-surface"
+                                />
+                            </div>
                         </div>
 
                         {/* Meta Info */}
                         <div className="flex-1 text-center md:text-left space-y-1">
-                            <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight">{profileUser.displayName}</h2>
+                            <h2 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">{profileUser.displayName}</h2>
                             {profileUser.bio ? (
-                                <p className="text-slate-600 text-xs md:text-sm italic whitespace-pre-line max-w-md">{profileUser.bio}</p>
+                                <p className="text-on-surface-variant text-body-md italic whitespace-pre-line max-w-md">{profileUser.bio}</p>
                             ) : (
-                                <p className="text-slate-400 text-xs italic">Chưa có tiểu sử.</p>
+                                <p className="text-on-surface-variant/60 text-xs italic">Chưa có tiểu sử.</p>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap justify-center md:justify-start gap-y-2 gap-x-6 text-xs md:text-sm text-slate-650 pt-3 border-t border-slate-100">
+                    {/* Meta bar */}
+                    <div className="flex flex-wrap justify-center md:justify-start gap-y-2 gap-x-6 text-xs md:text-sm text-on-surface-variant pt-4 border-t border-outline-variant/10">
                         <span className="flex items-center space-x-2">
-                            <Mail className="w-4 h-4 text-blue-600" />
+                            <MaterialIcon name="mail" className="text-primary" size={18} />
                             <span>{profileUser.email}</span>
                         </span>
                         <span className="flex items-center space-x-2">
-                            <Clock className="w-4 h-4 text-emerald-600" />
+                            <MaterialIcon name="schedule" className="text-secondary" size={18} />
                             <span>Đăng nhập gần nhất: {formatRelativeTime(profileUser.updatedAt || profileUser.lastLogin || profileUser.createdAt)}</span>
                         </span>
                     </div>
 
-                    {/* HÀNH ĐỘNG KẾT BẠN / CHAT VỚI NGƯỜI DÙNG KHÁC */}
+                    {/* HÀNH ĐỘNG KẾT BẠN / CHAT */}
                     {!isOwnProfile && (
-                        <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-4">
-                            {/* Khung kết bạn */}
+                        <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-6">
                             {relation.status === "none" && (
                                 <button
                                     onClick={handleSendRequest}
-                                    className="flex items-center space-x-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition shadow-md shadow-blue-600/10"
+                                    className="flex items-center space-x-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-on-primary rounded-xl text-xs font-semibold cursor-pointer transition shadow-md"
                                 >
-                                    <UserPlus className="w-4 h-4" />
+                                    <MaterialIcon name="person_add" size={18} />
                                     <span>Thêm bạn bè</span>
                                 </button>
                             )}
                             {relation.status === "pending_sent" && (
-                                <span className="flex items-center space-x-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-500 rounded-xl text-xs italic">
+                                <span className="flex items-center space-x-2 px-5 py-2.5 bg-surface-container-high/60 border border-outline-variant/10 text-on-surface-variant rounded-xl text-xs italic">
                                     Đã gửi yêu cầu kết bạn
                                 </span>
                             )}
@@ -690,14 +685,14 @@ const Profile = () => {
                                 <div className="flex items-center space-x-2">
                                     <button
                                         onClick={handleAccept}
-                                        className="flex items-center space-x-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition"
+                                        className="flex items-center space-x-2 px-5 py-2.5 bg-secondary hover:bg-secondary/90 text-on-secondary rounded-xl text-xs font-semibold cursor-pointer transition"
                                     >
-                                        <UserCheck className="w-4 h-4" />
+                                        <MaterialIcon name="person_check" size={18} />
                                         <span>Đồng ý kết bạn</span>
                                     </button>
                                     <button
                                         onClick={handleReject}
-                                        className="flex items-center space-x-1.5 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold cursor-pointer transition"
+                                        className="flex items-center space-x-2 px-5 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant rounded-xl text-xs font-semibold cursor-pointer transition"
                                     >
                                         Từ chối
                                     </button>
@@ -706,19 +701,18 @@ const Profile = () => {
                             {relation.status === "friends" && (
                                 <button
                                     onClick={handleUnfriend}
-                                    className="flex items-center space-x-1.5 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200/50 rounded-xl text-xs font-semibold cursor-pointer transition"
+                                    className="flex items-center space-x-2 px-5 py-2.5 bg-error-container/40 hover:bg-error-container/70 text-error rounded-xl text-xs font-semibold cursor-pointer transition"
                                 >
-                                    <UserMinus className="w-4 h-4" />
+                                    <MaterialIcon name="person_remove" size={18} />
                                     <span>Hủy kết bạn</span>
                                 </button>
                             )}
 
-                            {/* Nút nhắn tin */}
                             <button
                                 onClick={handleStartChat}
-                                className="flex items-center space-x-1.5 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition"
+                                className="flex items-center space-x-2 px-5 py-2.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-xs font-semibold cursor-pointer transition"
                             >
-                                <MessageSquare className="w-4 h-4 text-blue-600" />
+                                <MaterialIcon name="chat" className="text-primary" size={18} />
                                 <span>Nhắn tin</span>
                             </button>
                         </div>
@@ -726,12 +720,12 @@ const Profile = () => {
 
                     {/* Nút chỉnh sửa trang cá nhân cho chính mình */}
                     {isOwnProfile && (
-                        <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-4">
+                        <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-6">
                             <button
                                 onClick={() => setShowEditModal(true)}
-                                className="flex items-center space-x-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition shadow-md shadow-blue-600/10"
+                                className="flex items-center space-x-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-on-primary rounded-xl text-xs font-semibold cursor-pointer transition shadow-md"
                             >
-                                <Edit3 className="w-4 h-4" />
+                                <MaterialIcon name="edit" size={18} />
                                 <span>Chỉnh sửa trang cá nhân</span>
                             </button>
                             <button
@@ -747,25 +741,25 @@ const Profile = () => {
             </div>
 
             {/* Thanh chuyển đổi Tab Bài viết / Reels */}
-            <div className="flex border-b border-slate-200 select-none">
+            <div className="flex border-b border-outline-variant/10 select-none">
                 <button
                     onClick={() => setActiveTab("posts")}
                     className={`flex items-center space-x-2 px-6 py-3 font-semibold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer ${activeTab === "posts"
-                        ? "border-blue-600 text-blue-600 animate-fadeIn"
-                        : "border-transparent text-slate-500 hover:text-slate-800"
+                        ? "border-primary text-primary animate-fade-in"
+                        : "border-transparent text-on-surface-variant hover:text-on-surface"
                         }`}
                 >
-                    <FileText className="w-4 h-4" />
+                    <MaterialIcon name="article" size={18} />
                     <span>Bài đăng ({userPosts.length})</span>
                 </button>
                 <button
                     onClick={() => setActiveTab("reels")}
                     className={`flex items-center space-x-2 px-6 py-3 font-semibold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer ${activeTab === "reels"
-                        ? "border-blue-600 text-blue-600 animate-fadeIn"
-                        : "border-transparent text-slate-500 hover:text-slate-800"
+                        ? "border-primary text-primary animate-fade-in"
+                        : "border-transparent text-on-surface-variant hover:text-on-surface"
                         }`}
                 >
-                    <Film className="w-4 h-4" />
+                    <MaterialIcon name="motion_photos_on" size={18} />
                     <span>Thước phim ({userReels.length})</span>
                 </button>
             </div>

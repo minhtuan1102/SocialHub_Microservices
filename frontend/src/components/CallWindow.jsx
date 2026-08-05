@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Maximize2, Minimize2, Users, SwitchCamera } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 import api from "../services/api";
 
 const ICE_SERVERS = {
@@ -113,7 +113,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
     // Helper xử lý SDP Offer 1-1 (bao gồm cả khi Offer đến trước khi media sẵn sàng)
     const process1on1Offer = async (pc, sdp, targetId) => {
         try {
-            console.log("📥 [WEBRTC 1-1] Xử lý SDP Offer từ đối phương:", targetId);
             await pc.setRemoteDescription(new RTCSessionDescription(sdp));
             const rawAnswer = await pc.createAnswer();
             const answer = tuneOpusAudioSDP(rawAnswer);
@@ -153,7 +152,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         }
 
         pc.ontrack = (event) => {
-            console.log(`⚡ [GROUP WEBRTC] Nhận stream từ ${peerDisplayName} (${peerUserId})`);
             const stream = event.streams[0];
             groupPeersRef.current[peerUserId] = {
                 ...groupPeersRef.current[peerUserId],
@@ -296,7 +294,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
                     pc.ontrack = (event) => {
-                        console.log("⚡ [WEBRTC 1-1] Nhận luồng remote media thành công:", event.streams[0]);
                         const remoteStream = event.streams[0];
                         if (remoteStream) {
                             if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
@@ -348,7 +345,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
 
         // --- XỬ LÝ SỰ KIỆN GỌI NHÓM (GROUP MEET ROOM) ---
         const handleGroupJoinedRoom = async ({ existingParticipants }) => {
-            console.log("👥 [GROUP MEET] Tham gia phòng họp nhóm thành công. Các thành viên hiện có:", existingParticipants);
             setCallStatus("connected");
 
             let serversConfig = ICE_SERVERS;
@@ -382,7 +378,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         };
 
         const handleGroupUserJoined = async ({ userId, displayName, avatarUrl }) => {
-            console.log(`👥 [GROUP MEET] Thành viên mới gia nhập cuộc gọi: ${displayName} (${userId})`);
             setCallStatus("connected");
             setGroupParticipants(prev => {
                 if (prev.some(p => p.userId === userId)) return prev;
@@ -400,7 +395,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
         };
 
         const handleGroupUserLeft = ({ userId }) => {
-            console.log(`👥 [GROUP MEET] Thành viên đã rời cuộc gọi: ${userId}`);
             if (groupPeersRef.current[userId]) {
                 groupPeersRef.current[userId].pc.close();
                 delete groupPeersRef.current[userId];
@@ -410,7 +404,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
 
         // --- XỬ LÝ SỰ KIỆN WEBRTC P2P (DÙNG CHUNG / 1-1) ---
         const handleCallAccepted = async () => {
-            console.log("✅ [CALL 1-1] Đối phương đã nghe máy, đang tạo SDP Offer...");
             setCallStatus("connected");
             if (!isGroup && peerConnectionRef.current) {
                 const rawOffer = await peerConnectionRef.current.createOffer();
@@ -456,7 +449,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                 if (String(senderId) !== String(targetTargetId)) return;
                 const pc = peerConnectionRef.current;
                 if (!pc || !isMediaReadyRef.current) {
-                    console.log("⏳ [WEBRTC 1-1] PeerConnection/Media chưa sẵn sàng, lưu SDP Offer vào bộ đệm pending");
                     pendingOfferRef.current = sdp;
                     return;
                 }
@@ -487,7 +479,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                 if (String(senderId) !== String(targetTargetId)) return;
                 const pc = peerConnectionRef.current;
                 if (pc) {
-                    console.log("📥 [WEBRTC 1-1] Nhận SDP Answer từ đối phương:", senderId);
                     await pc.setRemoteDescription(new RTCSessionDescription(sdp));
 
                     // Flush các candidate đến trước trong bộ đệm
@@ -524,7 +515,6 @@ const CallWindow = ({ activeCall, chatSocket, currentUserId, onClose }) => {
                         console.warn("⚠️ Lỗi thêm ICE candidate:", err.message);
                     }
                 } else {
-                    console.log("⏳ [WEBRTC 1-1] Lưu ICE candidate vào bộ đệm pending");
                     pendingCandidatesRef.current.push(candidate);
                 }
             }

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 import PostCard from "../components/PostCard";
 import { useAuth } from "../context/AuthContext";
-import { ArrowLeft, Loader, MessageCircle } from "lucide-react";
+import MaterialIcon from "../components/MaterialIcon";
 
 const PostDetail = () => {
     const { id } = useParams();
@@ -71,18 +71,18 @@ const PostDetail = () => {
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={() => navigate(-1)}
-                            className="flex items-center space-x-2 text-slate-600 hover:text-blue-600 p-2 rounded-xl hover:bg-slate-200/50 transition cursor-pointer"
+                            className="flex items-center space-x-2 text-on-surface-variant hover:text-primary p-2 rounded-xl hover:bg-surface-container-high/60 transition cursor-pointer"
                         >
-                            <ArrowLeft className="w-5 h-5" />
+                            <MaterialIcon name="arrow_back" size={20} />
                             <span className="font-medium text-sm">Quay lại</span>
                         </button>
                     </div>
-                    <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                        <MessageCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-700 text-lg font-semibold">{error}</p>
+                    <div className="text-center py-16 bg-surface-container-low/60 border border-outline-variant/10 rounded-3xl p-6 shadow-sm">
+                        <MaterialIcon name="chat_bubble_outline" size={48} className="text-on-surface-variant/40 mx-auto mb-4" />
+                        <p className="text-on-surface text-lg font-semibold">{error}</p>
                         <Link
                             to="/"
-                            className="inline-block mt-4 text-sm font-medium text-blue-600 hover:underline"
+                            className="inline-block mt-4 text-sm font-medium text-primary hover:underline"
                         >
                             Trở về trang chủ
                         </Link>
@@ -93,12 +93,12 @@ const PostDetail = () => {
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={() => navigate(-1)}
-                            className="flex items-center space-x-2 text-slate-600 hover:text-blue-600 p-2 rounded-xl hover:bg-slate-200/50 transition cursor-pointer"
+                            className="flex items-center space-x-2 text-on-surface-variant hover:text-primary p-2 rounded-xl hover:bg-surface-container-high/60 transition cursor-pointer"
                         >
-                            <ArrowLeft className="w-5 h-5" />
+                            <MaterialIcon name="arrow_back" size={20} />
                             <span className="font-medium text-sm">Quay lại</span>
                         </button>
-                        <h1 className="text-xl font-bold text-slate-800">Chi tiết bài viết</h1>
+                        <h1 className="font-headline-md text-xl text-on-surface">Chi tiết bài viết</h1>
                     </div>
                     <PostCard
                         post={post}

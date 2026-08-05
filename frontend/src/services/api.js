@@ -60,7 +60,6 @@ export const checkServerHealth = async () => {
         if (res && (res.status === 200 || res.ok)) {
             // Localhost hoạt động bình thường -> Giữ/Chuyển về Localhost 8080
             if (currentOrigin !== LOCAL_BASE) {
-                console.log("✅ [HEALTH CHECK] Đã phát hiện Localhost 8080 hoạt động! Chuyển lại về Localhost.");
                 switchServer(LOCAL_BASE);
             }
         } else {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
-import { X, Send, Loader, Image, Phone, Video, Mic } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 import VoiceMessagePlayer from "./chat/VoiceMessagePlayer";
 import VoiceRecorder from "./chat/VoiceRecorder";
 import ImageLightboxModal from "./ImageLightboxModal";
@@ -236,7 +236,6 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
 
         const joinRoom = () => {
             chatSocket.emit("conversation:join", { conversationId });
-            console.log(`📡 Đã kết nối & gửi yêu cầu join conversation room: ${conversationId}`);
         };
 
         joinRoom();

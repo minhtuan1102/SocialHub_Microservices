@@ -3,14 +3,13 @@ import api from "../services/api";
 import CreatePost from "../components/CreatePost";
 import PostCard from "../components/PostCard";
 import { useAuth } from "../context/AuthContext";
-import { Loader, MessageCircle } from "lucide-react";
+import MaterialIcon from "../components/MaterialIcon";
 
 const Feed = () => {
     const { user } = useAuth();
     const [posts, setPosts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // 1. Tải danh sách bài viết từ post-service qua API Gateway
     const fetchFeed = async () => {
         setIsLoading(true);
         try {
@@ -29,10 +28,7 @@ const Feed = () => {
         fetchFeed();
     }, []);
 
-    // 2. Hàm callback khi đăng bài viết thành công (Chèn bài viết mới lên đầu trang)
     const handlePostCreated = (newPost) => {
-
-        // Gắn thêm profile của chính mình làm author để hiển thị luôn không cần f5
         const postWithAuthor = {
             ...newPost,
             author: {
@@ -45,27 +41,27 @@ const Feed = () => {
         setPosts((prevPosts) => [postWithAuthor, ...prevPosts]);
     };
 
-    // 3. Hàm callback khi chia sẻ bài đăng thành công (Chèn bài chia sẻ lên đầu trang)
     const handlePostShared = (newSharedPost) => {
         setPosts((prevPosts) => [newSharedPost, ...prevPosts]);
     };
 
-    // 4. Hàm callback khi xóa bài viết thành công (Loại bỏ bài viết ra khỏi feed)
     const handlePostDeleted = (deletedPostId) => {
         setPosts((prevPosts) => prevPosts.filter(p => p.id !== deletedPostId));
     };
 
-    // 5. Hàm callback khi cập nhật bài viết thành công
     const handlePostUpdated = (updatedPost) => {
         setPosts((prevPosts) => prevPosts.map(p => p.id === updatedPost.id ? updatedPost : p));
     };
 
     return (
-        <div className="space-y-6">
-            {/* Tiêu đề trang */}
-            <div className="mb-4 sm:mb-6">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Bảng Tin</h1>
-                <p className="text-slate-600 text-xs sm:text-sm mt-0.5 sm:mt-1">Cập nhật những hoạt động mới nhất từ bạn bè của bạn.</p>
+        <div className="space-y-8">
+            {/* Header Universe (discoveryscreen.html style) */}
+            <div className="mb-6 sm:mb-8">
+                <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight flex items-center gap-3">
+                    <MaterialIcon name="public" size={36} />
+                    <span>Bảng Tin</span>
+                </h1>
+                <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">Cập nhật những hoạt động mới nhất từ bạn bè của bạn.</p>
             </div>
 
             {/* Hộp đăng bài */}
@@ -73,8 +69,8 @@ const Feed = () => {
 
             {/* Danh sách bài viết */}
             {isLoading ? (
-                <div className="flex justify-center py-12">
-                    <Loader className="w-8 h-8 text-blue-600 animate-spin" />
+                <div className="flex justify-center py-16">
+                    <MaterialIcon name="progress_activity" size={36} className="text-primary animate-spin" />
                 </div>
             ) : posts.length > 0 ? (
                 <div className="space-y-6">
@@ -90,10 +86,10 @@ const Feed = () => {
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                    <MessageCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                    <p className="text-slate-700 text-lg">Chưa có bài viết nào ở đây.</p>
-                    <p className="text-slate-500 text-sm mt-1">Hãy là người đầu tiên đăng bài viết hoặc kết bạn mới nhé!</p>
+                <div className="text-center py-16 bg-surface-container-low/60 dark:bg-surface-container-high/60 backdrop-blur-2xl border border-outline-variant/10 rounded-3xl p-8 shadow-sm">
+                    <MaterialIcon name="chat_bubble_outline" size={48} className="text-on-surface-variant/40 mx-auto mb-4" />
+                    <p className="font-headline-md text-lg text-on-surface">Chưa có bài viết nào ở đây.</p>
+                    <p className="font-body-md text-sm text-on-surface-variant mt-1">Hãy là người đầu tiên đăng bài viết hoặc kết bạn mới nhé!</p>
                 </div>
             )}
         </div>

@@ -195,6 +195,28 @@ export const groupService = {
     return await groupRepository.updateMemberRole(groupId, userIdToUpdate, newRole);
   },
 
+  updateGroupSettings: async (groupId, { postApprovalRequired, name, description, privacy }, adminUserId) => {
+    const group = await groupRepository.findById(groupId);
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    const requester = await groupRepository.findMember(groupId, adminUserId);
+    if (!requester || requester.role !== 'admin' || requester.status !== 'approved') {
+      throw new ForbiddenError('Access denied: Only group admin can update settings');
+    }
+
+    const updateData = {};
+    if (typeof postApprovalRequired === 'boolean') {
+      updateData.post_approval_required = postApprovalRequired;
+    }
+    if (name) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (privacy) updateData.privacy = privacy;
+
+    return await groupRepository.update(groupId, updateData);
+  },
+
   createPostInGroup: async ({ groupId, authorId, content, mediaIds, token }) => {
     const group = await groupRepository.findById(groupId);
     if (!group) {
@@ -237,15 +259,18 @@ export const groupService = {
       throw new ForbiddenError('Access denied: You must be a member of this private group');
     }
 
-    // If fetching pending posts, check if requester is admin/moderator
-    if (status === 'pending') {
-      if (!member || (member.role !== 'admin' && member.role !== 'moderator') || member.status !== 'approved') {
-        throw new ForbiddenError('Access denied: Only admins and moderators can view pending posts');
+    const isAdminOrMod = member && (member.role === 'admin' || member.role === 'moderator') && member.status === 'approved';
+    let targetAuthorId = authorId;
+
+    // If fetching pending or rejected posts, non-admins can only see their own posts
+    if (status === 'pending' || status === 'rejected') {
+      if (!isAdminOrMod) {
+        targetAuthorId = requestingUserId;
       }
     }
 
-    const posts = await postRepository.findGroupPosts(groupId, status, limit, offset, authorId);
-    const count = await postRepository.countGroupPosts(groupId, status, authorId);
+    const posts = await postRepository.findGroupPosts(groupId, status, limit, offset, targetAuthorId);
+    const count = await postRepository.countGroupPosts(groupId, status, targetAuthorId);
 
     // Enrich posts with author profile and check like status
     const enrichedPosts = await Promise.all(
@@ -289,7 +314,7 @@ export const groupService = {
     return await postRepository.updatePostStatus(postId, 'approved');
   },
 
-  rejectPost: async (groupId, postId, adminUserId) => {
+  rejectPost: async (groupId, postId, adminUserId, reason = null) => {
     const group = await groupRepository.findById(groupId);
     if (!group) {
       throw new NotFoundError('Group not found');
@@ -305,9 +330,28 @@ export const groupService = {
       throw new NotFoundError('Post not found in this group');
     }
 
-    // Delete post on rejection
+    const rejectionReason = reason || 'Bài viết chưa tuân thủ quy định kiểm duyệt của nhóm';
+    return await postRepository.updatePostStatus(postId, 'rejected', rejectionReason);
+  },
+
+  deletePostInGroup: async (groupId, postId, adminUserId) => {
+    const group = await groupRepository.findById(groupId);
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    const requester = await groupRepository.findMember(groupId, adminUserId);
+    if (!requester || (requester.role !== 'admin' && requester.role !== 'moderator') || requester.status !== 'approved') {
+      throw new ForbiddenError('Access denied: Only group admin or moderator can delete posts');
+    }
+
+    const post = await postRepository.findById(postId);
+    if (!post || post.group_id !== groupId) {
+      throw new NotFoundError('Post not found in this group');
+    }
+
     await postRepository.delete(postId);
-    return { success: true, message: 'Post rejected and deleted' };
+    return { success: true, message: 'Post permanently deleted' };
   },
 
   getUserGroups: async (userId) => {

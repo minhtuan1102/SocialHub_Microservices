@@ -1,4 +1,4 @@
-import { X, Circle } from "lucide-react";
+import MaterialIcon from "../MaterialIcon";
 
 const CreateGroupModal = ({
     onClose,

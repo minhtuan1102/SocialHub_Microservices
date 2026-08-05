@@ -40,5 +40,12 @@ export const commentRepository = {
       WHERE c.id = ${commentId}::uuid AND c.post_id = ${postId}::uuid
     `;
     return result[0];
+  },
+
+  updateContent: async (id, content) => {
+    return await prisma.comment.update({
+      where: { id },
+      data: { content }
+    });
   }
 };

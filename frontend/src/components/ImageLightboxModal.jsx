@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 
 /**
  * Component Cửa sổ Xem Ảnh Toàn Màn Hình (Image Lightbox Modal)

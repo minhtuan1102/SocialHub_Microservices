@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash2, Send } from "lucide-react";
+import MaterialIcon from "../MaterialIcon";
 
 const formatTime = (seconds) => {
   const mins = Math.floor(seconds / 60);

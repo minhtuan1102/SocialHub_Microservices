@@ -55,3 +55,17 @@ export const deleteComment = async (req, res) => {
     return handleError(res, error, 'Delete Comment Error');
   }
 };
+
+export const updateComment = async (req, res) => {
+  try {
+    const comment = await commentService.updateComment({
+      commentId: req.params.commentId,
+      postId: req.params.postId,
+      userId: req.user.id,
+      content: req.body.content
+    });
+    return successResponse(res, 200, comment);
+  } catch (error) {
+    return handleError(res, error, 'Update Comment Error');
+  }
+};

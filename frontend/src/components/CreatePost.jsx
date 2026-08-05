@@ -1,19 +1,18 @@
 import { useState, useRef } from "react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { Image, Video, Send, X, Loader } from "lucide-react";
+import MaterialIcon from "./MaterialIcon";
 import { compressImageBeforeUpload } from "../utils/imageCompressor";
 
 const CreatePost = ({ onPostCreated }) => {
     const { user } = useAuth();
     const [content, setContent] = useState("");
     const [visibility, setVisibility] = useState("public");
-    const [selectedFiles, setSelectedFiles] = useState([]); // [{ id, file, previewUrl, isVideo }]
+    const [selectedFiles, setSelectedFiles] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef(null);
 
-    // 1. Xử lý khi chọn nhiều file (Ảnh / Video)
     const handleFilesChange = (e) => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
@@ -29,7 +28,6 @@ const CreatePost = ({ onPostCreated }) => {
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    // 2. Xóa 1 file khỏi danh sách xem trước
     const handleRemoveFile = (idToRemove) => {
         setSelectedFiles((prev) => {
             const item = prev.find((f) => f.id === idToRemove);
@@ -38,7 +36,6 @@ const CreatePost = ({ onPostCreated }) => {
         });
     };
 
-    // 3. Đăng bài viết kèm nhiều Media
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!content.trim() && selectedFiles.length === 0) return;
@@ -47,7 +44,6 @@ const CreatePost = ({ onPostCreated }) => {
         let mediaIds = [];
 
         try {
-            // Bước A: Nén ảnh tại Client & Upload tất cả file song song lên media-service
             if (selectedFiles.length > 0) {
                 setIsUploading(true);
                 const uploadPromises = selectedFiles.map(async (item) => {
@@ -56,7 +52,7 @@ const CreatePost = ({ onPostCreated }) => {
                         try {
                             fileToUpload = await compressImageBeforeUpload(item.file);
                         } catch (err) {
-                            console.warn('[COMPRESS] CreatePost fallback to raw file:', err.message);
+                            fileToUpload = item.file;
                         }
                     }
 
@@ -71,7 +67,6 @@ const CreatePost = ({ onPostCreated }) => {
                 setIsUploading(false);
             }
 
-            // Bước B: Đăng bài viết kèm mảng mediaIds
             const postRes = await api.post("/posts", {
                 content,
                 mediaIds,
@@ -81,14 +76,11 @@ const CreatePost = ({ onPostCreated }) => {
             if (postRes.data && postRes.data.success) {
                 setContent("");
                 setVisibility("public");
-                // Clear previews
                 selectedFiles.forEach((item) => URL.revokeObjectURL(item.previewUrl));
                 setSelectedFiles([]);
                 if (onPostCreated) onPostCreated(postRes.data.data);
             }
         } catch (error) {
-            console.error("❌ Lỗi khi đăng bài:", error);
-            alert("Không thể đăng bài viết. Vui lòng thử lại!");
         } finally {
             setIsSubmitting(false);
             setIsUploading(false);
@@ -96,25 +88,25 @@ const CreatePost = ({ onPostCreated }) => {
     };
 
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm mb-6">
+        <div className="bg-surface-container-low/60 dark:bg-surface-container-high/60 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 shadow-[0px_10px_40px_rgba(142,148,242,0.06)] dark:shadow-[0px_10px_40px_rgba(0,0,0,0.3)] border border-outline-variant/10 mb-8">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="flex items-start space-x-3 sm:space-x-4">
                     <img
                         src={user?.avatarUrl || "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix"}
                         alt="Avatar"
-                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-slate-200 object-cover shrink-0"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-outline-variant/20 object-cover ring-2 ring-primary-fixed/50 shrink-0"
                     />
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         placeholder={`${user?.displayName} ơi, hôm nay bạn đang nghĩ gì thế?`}
-                        className="flex-1 bg-transparent border-none text-slate-850 placeholder-slate-400 focus:outline-none resize-none min-h-[70px] text-base sm:text-lg"
+                        className="flex-1 bg-transparent border-none text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none resize-none min-h-[70px] font-body-lg text-body-lg"
                     />
                 </div>
 
-                {/* Danh sách xem trước nhiều Ảnh / Video */}
+                {/* Danh sách xem trước Ảnh / Video */}
                 {selectedFiles.length > 0 && (
-                    <div className={`grid gap-2 rounded-2xl overflow-hidden border border-slate-200 p-2 bg-slate-50 ${
+                    <div className={`grid gap-2 rounded-2xl overflow-hidden border border-outline-variant/10 p-2 bg-surface-container-low/40 ${
                         selectedFiles.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-3"
                     }`}>
                         {selectedFiles.map((item) => (
@@ -129,15 +121,14 @@ const CreatePost = ({ onPostCreated }) => {
                                     onClick={() => handleRemoveFile(item.id)}
                                     className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/85 rounded-full text-white transition cursor-pointer shadow-md"
                                 >
-                                    <X className="w-4 h-4" />
+                                    <MaterialIcon name="close" size={16} />
                                 </button>
                             </div>
                         ))}
                     </div>
                 )}
 
-                <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-slate-100">
-                    {/* Nút chọn Ảnh & Video */}
+                <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
                     <input
                         type="file"
                         multiple
@@ -151,7 +142,7 @@ const CreatePost = ({ onPostCreated }) => {
                         <select
                             value={visibility}
                             onChange={(e) => setVisibility(e.target.value)}
-                            className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-650 cursor-pointer outline-none focus:ring-1 focus:ring-blue-500 transition"
+                            className="bg-surface-container-high/60 border border-outline-variant/10 rounded-xl px-3 py-1.5 font-label-sm text-label-sm text-on-surface cursor-pointer outline-none focus:ring-1 focus:ring-primary transition"
                         >
                             <option value="public">🌍 Công khai</option>
                             <option value="friends">👥 Bạn bè</option>
@@ -161,10 +152,10 @@ const CreatePost = ({ onPostCreated }) => {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isSubmitting}
-                            className="flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-650 border border-slate-200 transition cursor-pointer disabled:opacity-50 text-xs sm:text-sm font-medium"
+                            className="flex items-center space-x-2 px-4 py-2 bg-surface-container-high/60 hover:bg-surface-container-highest rounded-xl text-on-surface-variant border border-outline-variant/10 transition cursor-pointer disabled:opacity-50 font-label-sm text-label-sm"
                         >
-                            <Image className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
-                            <Video className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                            <MaterialIcon name="photo_camera" size={18} className="text-secondary" />
+                            <MaterialIcon name="videocam" size={18} className="text-primary" />
                             <span>Ảnh / Video</span>
                         </button>
                     </div>
@@ -173,12 +164,12 @@ const CreatePost = ({ onPostCreated }) => {
                     <button
                         type="submit"
                         disabled={isSubmitting || (!content.trim() && selectedFiles.length === 0)}
-                        className="flex items-center space-x-1.5 sm:space-x-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-white font-semibold transition duration-200 transform active:scale-95 disabled:opacity-50 cursor-pointer text-xs sm:text-sm shadow-md shadow-blue-600/10"
+                        className="flex items-center space-x-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl text-on-primary font-label-sm text-label-sm transition duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md"
                     >
                         {isSubmitting ? (
-                            <Loader className="w-4 h-4 animate-spin" />
+                            <MaterialIcon name="progress_activity" size={18} className="animate-spin" />
                         ) : (
-                            <Send className="w-4 h-4" />
+                            <MaterialIcon name="send" size={18} />
                         )}
                         <span>{isSubmitting ? (isUploading ? "Đang tải media..." : "Đang đăng...") : "Đăng bài"}</span>
                     </button>

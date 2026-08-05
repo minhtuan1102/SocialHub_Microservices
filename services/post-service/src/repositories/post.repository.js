@@ -192,10 +192,20 @@ export const postRepository = {
     });
   },
 
-  updatePostStatus: async (postId, status) => {
+  updatePostStatus: async (postId, status, rejectionReason = null) => {
     return await prisma.post.update({
       where: { id: postId },
-      data: { status }
+      data: {
+        status,
+        rejection_reason: rejectionReason
+      }
+    });
+  },
+
+  updateToggleComments: async (postId, commentsDisabled) => {
+    return await prisma.post.update({
+      where: { id: postId },
+      data: { comments_disabled: commentsDisabled }
     });
   }
 };

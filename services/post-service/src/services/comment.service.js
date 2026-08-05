@@ -36,6 +36,10 @@ export const commentService = {
       throw new NotFoundError('Post not found');
     }
 
+    if (post.comments_disabled) {
+      throw new ForbiddenError('Bình luận đã bị tắt cho bài viết này');
+    }
+
     const newComment = await commentRepository.create(postId, authorId, content);
     await postRepository.incrementCommentCount(postId);
 
@@ -68,5 +72,19 @@ export const commentService = {
 
     await commentRepository.delete(commentId);
     await postRepository.decrementCommentCount(postId);
+  },
+
+  updateComment: async ({ commentId, postId, userId, content }) => {
+    if (!content || !content.trim()) {
+      throw new BadRequestError('Comment content cannot be empty');
+    }
+    const comment = await commentRepository.findById(commentId);
+    if (!comment || comment.post_id !== postId) {
+      throw new NotFoundError('Comment not found');
+    }
+    if (comment.author_id !== userId) {
+      throw new ForbiddenError('Not authorized to edit this comment');
+    }
+    return await commentRepository.updateContent(commentId, content.trim());
   }
 };
