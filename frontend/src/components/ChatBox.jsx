@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Loader, Phone, Video, X, Image, Mic, Send } from "lucide-react";
 import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import MaterialIcon from "./MaterialIcon";
@@ -77,7 +78,7 @@ const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
     try {
         data = JSON.parse(msgContent);
     } catch (e) {
-        return <div className="text-[10px] italic text-slate-400">Tin nhắn chia sẻ (Không tải được nội dung)</div>;
+        return <div className="text-[10px] italic text-on-surface-variant/60">Tin nhắn chia sẻ (Không tải được nội dung)</div>;
     }
 
     return (
@@ -85,7 +86,7 @@ const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
             {/* Lời dẫn đi kèm (nếu có) */}
             {data.shareText && (
                 <div className={`px-3 py-1.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
-                    isMe ? "bg-blue-600 text-white rounded-br-none" : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200"
+                    isMe ? "bg-primary text-on-primary rounded-br-none" : "bg-surface-container-high dark:bg-surface-container-highest text-on-surface rounded-bl-none border border-outline-variant/10"
                 }`}>
                     {data.shareText}
                 </div>
@@ -94,11 +95,11 @@ const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
             {/* Block bài viết / Reel chia sẻ kiểu Facebook */}
             <div
                 onClick={() => onNavigate(data.isReel ? `/reels?id=${data.postId}` : `/post/${data.postId}`)}
-                className="bg-slate-50 border border-slate-200 hover:border-blue-400 hover:bg-slate-100 rounded-xl overflow-hidden shadow-sm cursor-pointer transition duration-150 text-left w-full max-w-[190px] flex flex-col"
+                className="bg-surface-container-low dark:bg-surface-container border border-outline-variant/20 hover:border-primary/40 rounded-xl overflow-hidden shadow-sm cursor-pointer transition duration-150 text-left w-full max-w-[190px] flex flex-col"
             >
                 {/* Phần hình ảnh ở trên */}
                 {data.mediaId ? (
-                    <div className="w-full h-24 overflow-hidden bg-black/5 flex items-center justify-center border-b border-slate-200/60 relative shrink-0">
+                    <div className="w-full h-24 overflow-hidden bg-surface-container-high flex items-center justify-center border-b border-outline-variant/10 relative shrink-0">
                         <ChatImage mediaId={data.mediaId} />
                         <div className="absolute top-1.5 left-1.5 flex items-center space-x-1 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-full border border-white/10 max-w-[90%] select-none">
                             <img
@@ -114,22 +115,22 @@ const RenderShareMessage = ({ msgContent, isMe, onNavigate }) => {
                 {/* Phần nội dung text và logo ở dưới */}
                 <div className="p-2.5 space-y-1.5">
                     {!data.mediaId && (
-                        <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
+                        <div className="flex items-center space-x-1.5 border-b border-outline-variant/10 pb-1.5">
                             <img
                                 src={data.authorAvatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${data.postId}`}
-                                className="w-4.5 h-4.5 rounded-full object-cover border border-slate-200"
+                                className="w-4.5 h-4.5 rounded-full object-cover border border-outline-variant/20"
                                 alt="Author"
                             />
-                            <span className="font-bold text-[9px] text-slate-850 truncate">{data.authorName}</span>
+                            <span className="font-bold text-[9px] text-on-surface truncate">{data.authorName}</span>
                         </div>
                     )}
                     
-                    <p className="text-[9px] font-bold text-slate-800 line-clamp-3 leading-relaxed whitespace-pre-wrap">
+                    <p className="text-[9px] font-bold text-on-surface line-clamp-3 leading-relaxed whitespace-pre-wrap">
                         {data.postContent || "Bài viết không có nội dung văn bản."}
                     </p>
 
                     {/* Logo SocialHub chân trang tương tự Facebook */}
-                    <div className="flex items-center space-x-1 text-[8px] text-slate-500 font-semibold pt-1.5 border-t border-slate-200/50 mt-1 select-none">
+                    <div className="flex items-center space-x-1 text-[8px] text-on-surface-variant/70 font-semibold pt-1.5 border-t border-outline-variant/10 mt-1 select-none">
                         <img src="/logo.svg" alt="SocialHub Logo" className="w-3.5 h-3.5 object-contain" />
                         <span>SocialHub</span>
                     </div>
@@ -414,18 +415,18 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
     };
 
     return (
-        <div className="w-full sm:w-80 bg-white border border-slate-200 sm:rounded-t-2xl shadow-2xl flex flex-col h-[75vh] max-h-[500px] sm:h-[420px] rounded-t-2xl transition-all duration-200">
+        <div className="w-full sm:w-80 bg-surface-container-lowest dark:bg-surface-container-high/95 backdrop-blur-2xl border border-outline-variant/20 dark:border-outline-variant/10 sm:rounded-t-2xl shadow-2xl flex flex-col h-[75vh] max-h-[500px] sm:h-[420px] rounded-t-2xl transition-all duration-200">
             {/* Header hộp thoại */}
-            <div className="flex items-center justify-between p-3 border-b border-slate-200 bg-slate-50 rounded-t-2xl">
+            <div className="flex items-center justify-between p-3 border-b border-outline-variant/10 bg-surface-container-low/60 dark:bg-surface-container-low/80 rounded-t-2xl">
                 <div className="flex items-center space-x-2.5">
                     <img
                         src={chatAvatar}
-                        className="w-8 h-8 rounded-full object-cover"
+                        className="w-8 h-8 rounded-full object-cover border border-outline-variant/20"
                         alt="Avatar"
                     />
                     <div className="truncate max-w-[150px]">
-                        <h4 className="font-semibold text-slate-800 text-xs truncate">{chatTitle}</h4>
-                        <p className="text-[10px] text-slate-500">
+                        <h4 className="font-semibold text-on-surface text-xs truncate">{chatTitle}</h4>
+                        <p className="text-[10px] text-on-surface-variant/70">
                             {chatSubtitle}
                         </p>
                     </div>
@@ -448,7 +449,7 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                             }, "audio"
                         )}
                         title={isGroup ? "Gọi thoại nhóm" : "Gọi thoại"}
-                        className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 hover:text-emerald-600 transition cursor-pointer"
+                        className="p-1.5 hover:bg-surface-container-high rounded-full text-on-surface-variant hover:text-emerald-500 transition cursor-pointer"
                     >
                         <Phone className="w-4 h-4" />
                     </button>
@@ -468,21 +469,21 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                             }, "video"
                         )}
                         title={isGroup ? "Gọi Video nhóm" : "Gọi Video"}
-                        className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 hover:text-blue-600 transition cursor-pointer"
+                        className="p-1.5 hover:bg-surface-container-high rounded-full text-on-surface-variant hover:text-primary transition cursor-pointer"
                     >
                         <Video className="w-4 h-4" />
                     </button>
-                    <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-500 hover:text-slate-800 transition cursor-pointer">
+                    <button onClick={onClose} className="p-1.5 hover:bg-surface-container-high rounded-full text-on-surface-variant hover:text-on-surface transition cursor-pointer">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
             {/* Vùng tin nhắn */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-slate-50/50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-surface-container-lowest/30 dark:bg-surface-container-lowest/60">
                 {isLoading ? (
                     <div className="flex justify-center items-center h-full">
-                        <Loader className="w-6 h-6 text-blue-600 animate-spin" />
+                        <Loader className="w-6 h-6 text-primary animate-spin" />
                     </div>
                 ) : messages.length > 0 ? (
                     messages.map((msg, index) => {
@@ -497,7 +498,7 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                             <div key={msg.id || msg._id || index} className={`flex flex-col ${isMe ? "items-end" : "items-start"} space-y-1`}>
                                 {/* Tên người gửi nếu là group và không phải mình */}
                                 {!isMe && isGroup && (
-                                    <span className="text-[9px] text-slate-500 font-semibold ml-8.5 select-none">
+                                    <span className="text-[9px] text-on-surface-variant/70 font-semibold ml-8.5 select-none">
                                         {sender.displayName}
                                     </span>
                                 )}
@@ -506,21 +507,21 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                                     {!isMe && (
                                         <img
                                             src={sender.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${msg.senderId}`}
-                                            className="w-6.5 h-6.5 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                                            className="w-6.5 h-6.5 rounded-full object-cover border border-outline-variant/20 flex-shrink-0"
                                             alt="Sender Avatar"
                                         />
                                     )}
                                     
                                     {msg.type === "image" && msg.mediaId ? (
                                         <div className={`flex flex-col space-y-1 ${isMe ? "items-end" : "items-start"}`}>
-                                            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black/5">
+                                            <div className="overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container-high/30">
                                                 <ChatImage mediaId={msg.mediaId} onClick={() => handleOpenLightbox(msg.mediaId)} />
                                             </div>
                                             {msg.content && msg.content !== "Sent an image" && (
                                                 <div className={`px-3 py-1.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
                                                     isMe
-                                                        ? "bg-blue-600 text-white rounded-br-none"
-                                                        : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200"
+                                                        ? "bg-primary text-on-primary rounded-br-none"
+                                                        : "bg-surface-container-high dark:bg-surface-container-highest text-on-surface rounded-bl-none border border-outline-variant/10"
                                                 }`}>
                                                     {msg.content}
                                                 </div>
@@ -533,31 +534,31 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                                     ) : (
                                         <div className={`px-3 py-1.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
                                             isMe
-                                                ? "bg-blue-600 text-white rounded-br-none"
-                                                : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200"
+                                                ? "bg-primary text-on-primary rounded-br-none"
+                                                : "bg-surface-container-high dark:bg-surface-container-highest text-on-surface rounded-bl-none border border-outline-variant/10"
                                         }`}>
                                             {msg.content}
                                         </div>
                                     )}
                                 </div>
                                 {/* Thời gian gửi tin nhắn */}
-                                <span className={`text-[8px] text-slate-400 select-none ${isMe ? "mr-1" : "ml-8.5"}`}>
+                                <span className={`text-[8px] text-on-surface-variant/70 select-none ${isMe ? "mr-1" : "ml-8.5"}`}>
                                     {msgTime}
                                 </span>
                             </div>
                         );
                     })
                 ) : (
-                    <div className="text-center text-slate-400 text-[10px] py-12">Chưa có tin nhắn nào. Gửi tin nhắn đầu tiên!</div>
+                    <div className="text-center text-on-surface-variant/60 text-[10px] py-12">Chưa có tin nhắn nào. Gửi tin nhắn đầu tiên!</div>
                 )}
                 
                 {/* Chỉ chỉ số đang gõ */}
                 {isOtherUserTyping && (
-                    <div className="flex items-center space-x-2 text-slate-500 text-[10px] italic">
+                    <div className="flex items-center space-x-2 text-on-surface-variant text-[10px] italic">
                         <div className="flex space-x-1">
-                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></span>
+                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]"></span>
                         </div>
                         <span>Đang nhập...</span>
                     </div>
@@ -566,15 +567,15 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
             </div>
 
             {/* Input gõ tin nhắn */}
-            <form onSubmit={handleSendMessage} className="p-3 border-t border-slate-200 bg-slate-50 space-y-2">
+            <form onSubmit={handleSendMessage} className="p-3 border-t border-outline-variant/10 bg-surface-container-low/60 dark:bg-surface-container-low/80 space-y-2">
                 {/* Phần hiển thị ảnh xem trước (Preview) */}
                 {imagePreview && (
-                    <div className="relative rounded-xl overflow-hidden border border-slate-200 max-h-20 max-w-[120px] flex items-center bg-white">
+                    <div className="relative rounded-xl overflow-hidden border border-outline-variant/20 max-h-20 max-w-[120px] flex items-center bg-surface-container-high">
                         <img src={imagePreview} alt="Preview" className="w-full h-full object-contain max-h-20" />
                         <button
                             type="button"
                             onClick={handleRemoveImage}
-                            className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition cursor-pointer"
+                            className="absolute top-1 right-1 p-1 bg-error hover:bg-error/90 text-on-error rounded-full transition cursor-pointer"
                         >
                             <X className="w-3 h-3" />
                         </button>
@@ -600,7 +601,7 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isSubmitting}
-                            className="p-2 bg-white border border-slate-200 hover:bg-slate-100 hover:border-blue-600 text-slate-500 hover:text-blue-600 rounded-xl transition cursor-pointer disabled:opacity-50"
+                            className="p-2 bg-surface-container-high/60 dark:bg-surface-container-high/80 border border-outline-variant/10 hover:bg-surface-container-highest hover:border-primary/50 text-on-surface-variant hover:text-primary rounded-xl transition cursor-pointer disabled:opacity-50"
                             title="Đính kèm ảnh"
                         >
                             <Image className="w-4 h-4" />
@@ -611,7 +612,7 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                             type="button"
                             onClick={() => setIsRecording(true)}
                             disabled={isSubmitting}
-                            className="p-2 bg-white border border-slate-200 hover:bg-slate-100 hover:border-blue-600 text-slate-500 hover:text-blue-600 rounded-xl transition cursor-pointer disabled:opacity-50"
+                            className="p-2 bg-surface-container-high/60 dark:bg-surface-container-high/80 border border-outline-variant/10 hover:bg-surface-container-highest hover:border-primary/50 text-on-surface-variant hover:text-primary rounded-xl transition cursor-pointer disabled:opacity-50"
                             title="Ghi âm tin nhắn thoại"
                         >
                             <Mic className="w-4 h-4" />
@@ -624,12 +625,12 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                             onPaste={handleInputPaste}
                             placeholder={isSubmitting ? "Đang gửi..." : "Aa..."}
                             disabled={isSubmitting}
-                            className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition disabled:opacity-50"
+                            className="flex-1 bg-surface-container-high/60 dark:bg-surface-container-high/80 border border-outline-variant/10 rounded-xl px-3 py-2 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition disabled:opacity-50"
                         />
                         <button
                             type="submit"
                             disabled={isSubmitting || (!inputText.trim() && !imageFile)}
-                            className="p-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl transition cursor-pointer"
+                            className="p-2 bg-primary hover:opacity-90 disabled:opacity-50 text-on-primary rounded-xl transition cursor-pointer shadow-sm"
                         >
                             {isSubmitting ? (
                                 <Loader className="w-4 h-4 animate-spin" />

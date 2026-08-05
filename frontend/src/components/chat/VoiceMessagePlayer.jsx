@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Play, Pause } from "lucide-react";
 import MaterialIcon from "../MaterialIcon";
 import api from "../../services/api";
 
