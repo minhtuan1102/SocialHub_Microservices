@@ -35,7 +35,7 @@ const Register = () => {
             });
             google.accounts.id.renderButton(
                 document.getElementById("google-signup-btn"),
-                { theme: "outline", size: "large", width: "100%", text: "signup_with" }
+                { theme: "outline", size: "large", width: 360, text: "continue_with" }
             );
         }
     }, [loginWithGoogle, navigate]);
@@ -153,7 +153,7 @@ const Register = () => {
 
                 {/* Nút đăng ký Google */}
                 <div className="w-full flex justify-center select-none">
-                    <div id="google-signup-btn" className="w-full"></div>
+                    <div id="google-signup-btn"></div>
                 </div>
 
                 <div className="mt-8 text-center text-on-surface-variant text-sm">
