@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import MaterialIcon from "./MaterialIcon";
+import { X, Loader, Send, Search, Check } from "lucide-react";
 
 const ShareModal = ({ post, onClose, onShareSuccess }) => {
     const { user: currentUser } = useAuth();
@@ -110,8 +112,8 @@ const ShareModal = ({ post, onClose, onShareSuccess }) => {
         return title.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+    return createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
             <div className="bg-white border border-slate-200 w-full max-w-lg max-h-[90vh] flex flex-col p-4 sm:p-6 rounded-2xl shadow-2xl space-y-4 relative overflow-hidden">
                 {/* Header modal */}
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -288,7 +290,8 @@ const ShareModal = ({ post, onClose, onShareSuccess }) => {
                 )}
             </div>
         </div>
-        </div>
+    </div>,
+        document.body
     );
 };
 
