@@ -3,6 +3,9 @@ import pool from "../config/db.js";
 import redis from "../config/redis.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 import { generateAccessToken, generateRefreshToken, getRefreshTokenExpiry } from "../utils/token.js";
 import { sendResetPasswordEmail } from "../utils/mail.js";
@@ -370,3 +373,100 @@ export const resetPassword = async (req, res) => {
         return res.status(500).json({ success: false, message: "Lỗi máy chủ khi đặt lại mật khẩu." });
     }
 };
+
+export const googleLogin = async (req, res) => {
+    const { idToken } = req.body;
+
+    try {
+        if (!idToken) {
+            return res.status(400).json({ success: false, message: "Google ID Token là bắt buộc." });
+        }
+
+        // Xác thực ID Token qua Google client
+        let payload;
+        try {
+            const ticket = await googleClient.verifyIdToken({
+                idToken,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } catch (verifyErr) {
+            console.error("❌ Lỗi xác thực Google Token:", verifyErr.message);
+            return res.status(400).json({ success: false, message: "Google ID Token không hợp lệ hoặc đã hết hạn." });
+        }
+
+        const { email, name, picture } = payload;
+        if (!email) {
+            return res.status(400).json({ success: false, message: "Không thể lấy thông tin email từ tài khoản Google." });
+        }
+
+        // Tìm người dùng trong database Postgres
+        let userRes = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        let dbUser;
+
+        if (userRes.rows.length === 0) {
+            // Đăng ký tài khoản mới tự động
+            // Do đăng nhập bằng Google, ta tạo một password_hash placeholder ngẫu nhiên
+            const randomPassword = crypto.randomBytes(16).toString("hex");
+            const passwordHash = await bcrypt.hash(randomPassword, 10);
+            const displayName = name || email.split("@")[0];
+            const avatarUrl = picture || "";
+
+            const insertRes = await pool.query(
+                "INSERT INTO users (email, password_hash, display_name, avatar_url) VALUES ($1, $2, $3, $4) RETURNING *",
+                [email, passwordHash, displayName, avatarUrl]
+            );
+            dbUser = insertRes.rows[0];
+            console.log(`🌱 Đăng ký tài khoản Google mới thành công: ${email}`);
+        } else {
+            dbUser = userRes.rows[0];
+            // Cập nhật lại avatar từ Google nếu trong DB chưa có
+            if (!dbUser.avatar_url && picture) {
+                await pool.query("UPDATE users SET avatar_url = $1 WHERE id = $2", [picture, dbUser.id]);
+                dbUser.avatar_url = picture;
+            }
+            console.log(`🔑 Đăng nhập bằng Google thành công: ${email}`);
+        }
+
+        // Tạo JWT
+        const accessToken = generateAccessToken(dbUser.id);
+        const refreshToken = generateRefreshToken(dbUser.id);
+
+        // Cập nhật last_login trong DB
+        const nowLogin = new Date();
+        await pool.query(
+            "UPDATE users SET last_login = $1, updated_at = $1 WHERE id = $2",
+            [nowLogin, dbUser.id]
+        );
+        await redis.del(`user:${dbUser.id}`).catch(() => {});
+
+        // Lưu Refresh Token mới
+        const expiry = getRefreshTokenExpiry(7);
+        await pool.query(
+            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+            [dbUser.id, refreshToken, expiry]
+        );
+
+        const user = {
+            id: dbUser.id,
+            email: dbUser.email,
+            displayName: dbUser.display_name,
+            avatarUrl: dbUser.avatar_url,
+            bio: dbUser.bio,
+            coverUrl: dbUser.cover_url
+        };
+
+        return res.status(200).json({
+            success: true,
+            user,
+            tokens: {
+                accessToken,
+                refreshToken
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Lỗi trong controller googleLogin:", error);
+        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi xử lý đăng nhập Google." });
+    }
+};;
