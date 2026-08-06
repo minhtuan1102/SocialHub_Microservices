@@ -11,6 +11,7 @@ router.post('/auth/refresh', (req, res) => httpClientService.forwardToUserServic
 router.post('/auth/forgot-password', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.post('/auth/reset-password', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 router.post('/auth/google', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
+router.post('/auth/verify-email', (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
 
 // user-service protected routes
 router.post('/auth/logout', protectRoute, (req, res) => httpClientService.forwardToUserService(req, res, req.baseUrl + req.path));
