@@ -3,6 +3,7 @@ import {Link} from "react-router-dom"; // <-- Import thêm Link để điều h�
 import api from "../services/api";
 import {getMediaFileUrl} from "../services/mediaUrl";
 import MaterialIcon from "./MaterialIcon";
+import { Loader } from "lucide-react";
 import ShareModal from "./ShareModal";
 import EditPostModal from "./EditPostModal";
 import ImageLightboxModal from "./ImageLightboxModal";
