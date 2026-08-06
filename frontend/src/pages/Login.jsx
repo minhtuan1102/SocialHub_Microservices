@@ -34,7 +34,7 @@ const Login = () => {
             });
             google.accounts.id.renderButton(
                 document.getElementById("google-signin-btn"),
-                { theme: "outline", size: "large", width: "100%" }
+                { theme: "outline", size: "large", width: 360, text: "continue_with" }
             );
         }
     }, [loginWithGoogle, navigate]);
@@ -139,7 +139,7 @@ const Login = () => {
 
                 {/* Nút đăng nhập Google */}
                 <div className="w-full flex justify-center select-none">
-                    <div id="google-signin-btn" className="w-full"></div>
+                    <div id="google-signin-btn"></div>
                 </div>
 
                 <div className="mt-8 text-center text-on-surface-variant text-sm">
