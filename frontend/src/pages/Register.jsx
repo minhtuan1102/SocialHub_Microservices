@@ -13,6 +13,9 @@ const Register = () => {
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
+    // Registration step: "form" | "success"
+    const [step, setStep] = useState("form");
+
     const handleGoogleCallback = async (response) => {
         setError("");
         setIsLoading(true);
@@ -49,7 +52,7 @@ const Register = () => {
         setIsLoading(false);
 
         if (result.success) {
-            navigate("/");
+            setStep("success");
         } else {
             setError(result.message);
         }
@@ -65,8 +68,14 @@ const Register = () => {
             <div className="w-full max-w-md bg-surface-container-low/60 dark:bg-surface-container-high/60 backdrop-blur-3xl border border-outline-variant/10 rounded-3xl p-6 sm:p-10 shadow-[0_20px_60px_rgba(142,148,242,0.15)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)] z-10 animate-fade-in">
                 <div className="text-center mb-8">
                     <img src="/logo.svg" alt="SocialHub Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
-                    <h2 className="font-headline-lg text-headline-lg text-primary tracking-tight">Tạo tài khoản</h2>
-                    <p className="font-body-md text-sm text-on-surface-variant mt-2">Gia nhập SocialHub để khám phá bạn bè mới.</p>
+                    <h2 className="font-headline-lg text-headline-lg text-primary tracking-tight">
+                        {step === "form" ? "Tạo tài khoản" : "Kiểm tra Email"}
+                    </h2>
+                    <p className="font-body-md text-sm text-on-surface-variant mt-2">
+                        {step === "form" 
+                            ? "Gia nhập SocialHub để khám phá bạn bè mới." 
+                            : "Kích hoạt tài khoản của bạn qua email."}
+                    </p>
                 </div>
 
                 {error && (
@@ -75,93 +84,117 @@ const Register = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                        <label className="font-label-sm text-xs text-on-surface-variant block uppercase tracking-wider">Tên hiển thị (Họ tên)</label>
-                        <div className="relative">
-                            <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant">
-                                <MaterialIcon name="person" size={20} />
-                            </span>
-                            <input
-                                type="text"
-                                required
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                placeholder="Nguyễn Văn A"
-                                className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary transition"
-                            />
+                {step === "success" ? (
+                    <div className="space-y-6 text-center animate-fade-in select-none">
+                        <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MaterialIcon name="mark_email_read" size={32} />
+                        </div>
+                        <p className="font-body-md text-sm text-on-surface-variant leading-relaxed">
+                            Chúng tôi đã gửi một liên kết kích hoạt tài khoản tới địa chỉ email: <strong className="text-primary">{email}</strong>.
+                        </p>
+                        <p className="font-body-md text-xs text-on-surface-variant/70 leading-relaxed">
+                            Vui lòng kiểm tra hộp thư (bao gồm cả thư mục Spam/Quảng cáo) và nhấp vào liên kết để hoàn thành thủ tục đăng ký.
+                        </p>
+                        <div className="pt-4">
+                            <Link
+                                to="/login"
+                                className="w-full bg-primary hover:bg-primary/90 text-on-primary font-semibold py-3.5 px-6 rounded-2xl shadow-md transition duration-200 inline-block text-sm"
+                            >
+                                Quay lại Đăng nhập
+                            </Link>
                         </div>
                     </div>
+                ) : (
+                    <>
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="font-label-sm text-xs text-on-surface-variant block uppercase tracking-wider">Tên hiển thị (Họ tên)</label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant">
+                                        <MaterialIcon name="person" size={20} />
+                                    </span>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={displayName}
+                                        onChange={(e) => setDisplayName(e.target.value)}
+                                        placeholder="Nguyễn Văn A"
+                                        className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary transition"
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="space-y-2">
-                        <label className="font-label-sm text-xs text-on-surface-variant block uppercase tracking-wider">Địa chỉ Email</label>
-                        <div className="relative">
-                            <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant">
-                                <MaterialIcon name="mail" size={20} />
-                            </span>
-                            <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="name@example.com"
-                                className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary transition"
-                            />
+                            <div className="space-y-2">
+                                <label className="font-label-sm text-xs text-on-surface-variant block uppercase tracking-wider">Địa chỉ Email</label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant">
+                                        <MaterialIcon name="mail" size={20} />
+                                    </span>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="name@example.com"
+                                        className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary transition"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="font-label-sm text-xs text-on-surface-variant block uppercase tracking-wider">Mật khẩu (Tối thiểu 8 ký tự)</label>
+                                <div className="relative">
+                                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant">
+                                        <MaterialIcon name="lock" size={20} />
+                                    </span>
+                                    <input
+                                        type="password"
+                                        required
+                                        minLength={8}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary transition"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full bg-primary hover:bg-primary/90 text-on-primary font-semibold py-3.5 rounded-2xl shadow-md transition duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer text-sm flex items-center justify-center space-x-2"
+                            >
+                                {isLoading ? (
+                                    <MaterialIcon name="progress_activity" size={20} className="animate-spin" />
+                                ) : (
+                                    <span>Đăng Ký Tài Khoản</span>
+                                )}
+                            </button>
+                        </form>
+
+                        {/* Dấu ngăn cách */}
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-white px-2 text-slate-400">Hoặc tiếp tục với</span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <label className="font-label-sm text-xs text-on-surface-variant block uppercase tracking-wider">Mật khẩu (Tối thiểu 8 ký tự)</label>
-                        <div className="relative">
-                            <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant">
-                                <MaterialIcon name="lock" size={20} />
-                            </span>
-                            <input
-                                type="password"
-                                required
-                                minLength={8}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                className="w-full bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-primary transition"
-                            />
+                        {/* Nút đăng ký Google */}
+                        <div className="w-full flex justify-center select-none">
+                            <div id="google-signup-btn"></div>
                         </div>
-                    </div>
 
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-primary hover:bg-primary/90 text-on-primary font-semibold py-3.5 rounded-2xl shadow-md transition duration-200 active:scale-[0.99] disabled:opacity-50 cursor-pointer text-sm flex items-center justify-center space-x-2"
-                    >
-                        {isLoading ? (
-                            <MaterialIcon name="progress_activity" size={20} className="animate-spin" />
-                        ) : (
-                            <span>Đăng Ký Tài Khoản</span>
-                        )}
-                    </button>
-                </form>
-
-                {/* Dấu ngăn cách */}
-                <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-200"></div>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white px-2 text-slate-400">Hoặc tiếp tục với</span>
-                    </div>
-                </div>
-
-                {/* Nút đăng ký Google */}
-                <div className="w-full flex justify-center select-none">
-                    <div id="google-signup-btn"></div>
-                </div>
-
-                <div className="mt-8 text-center text-on-surface-variant text-sm">
-                    Đã có tài khoản rồi?{" "}
-                    <Link to="/login" className="text-primary hover:underline font-semibold transition">
-                        Đăng nhập ngay
-                    </Link>
-                </div>
+                        <div className="mt-8 text-center text-on-surface-variant text-sm">
+                            Đã có tài khoản rồi?{" "}
+                            <Link to="/login" className="text-primary hover:underline font-semibold transition">
+                                Đăng nhập ngay
+                            </Link>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

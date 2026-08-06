@@ -61,12 +61,27 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Hàm xử lý Đăng ký
+    // Hàm xử lý Đăng ký bước 1 (gửi OTP)
     const register = async (email, password, displayName) => {
         try {
             const res = await api.post("/auth/register", { email, password, name: displayName });
             if (res.data && res.data.success) {
-                const { accessToken, refreshToken } = res.data.token || res.data.tokens || {};
+                return { success: true, message: res.data.message };
+            }
+        } catch (err) {
+            return {
+                success: false,
+                message: err.response?.data?.message || "Đăng ký thất bại!",
+            };
+        }
+    };
+
+    // Hàm xác thực Email để hoàn tất Đăng ký
+    const verifyEmail = async (token) => {
+        try {
+            const res = await api.post("/auth/verify-email", { token });
+            if (res.data && res.data.success) {
+                const { accessToken, refreshToken } = res.data.tokens;
                 localStorage.setItem("accessToken", accessToken);
                 localStorage.setItem("refreshToken", refreshToken);
                 setUser(res.data.user);
@@ -76,7 +91,7 @@ export const AuthProvider = ({ children }) => {
         } catch (err) {
             return {
                 success: false,
-                message: err.response?.data?.message || "Đăng ký thất bại!",
+                message: err.response?.data?.message || "Xác thực email kích hoạt thất bại!",
             };
         }
     };
@@ -119,7 +134,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, setUser, isAuthenticated, loading, login, register, loginWithGoogle, logout }}>
+        <AuthContext.Provider value={{ user, setUser, isAuthenticated, loading, login, register, verifyEmail, loginWithGoogle, logout }}>
             {children}
         </AuthContext.Provider>
     );

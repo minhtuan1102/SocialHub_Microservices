@@ -8,63 +8,48 @@ import { OAuth2Client } from "google-auth-library";
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 import { generateAccessToken, generateRefreshToken, getRefreshTokenExpiry } from "../utils/token.js";
-import { sendResetPasswordEmail } from "../utils/mail.js";
+import { sendResetPasswordEmail, sendVerificationLinkEmail } from "../utils/mail.js";
 
 export const register = async (req, res) => {
-
     const { name, email, password } = req.body;
 
     try {
         if (!name || !email || !password) {
-            throw new Error("All fields are required");
+            return res.status(400).json({ success: false, message: "Tất cả các trường là bắt buộc." });
         }
 
+        // Kiểm tra email tồn tại trong Postgres
         const userAlreadyExists = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-
         if (userAlreadyExists.rows.length > 0) {
-            return res.status(400).json({ success: false, message: "User already exists" });
+            return res.status(400).json({ success: false, message: "Tài khoản với Email này đã tồn tại." });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newUserQuery = `
-            INSERT INTO users (email, password_hash, display_name)
-            VALUES ($1, $2, $3)
-            RETURNING id, email, display_name as "displayName", bio, avatar_url as "avatarUrl"
-        `;
+        // Sinh token kích hoạt ngẫu nhiên (32 bytes hex)
+        const token = crypto.randomBytes(32).toString("hex");
 
-        const result = await pool.query(
-            newUserQuery,
-            [email, hashedPassword, name]
-        );
+        // Lưu thông tin đăng ký tạm thời vào Redis với TTL 15 phút (900 giây)
+        const pendingKey = `pending-register-token:${token}`;
+        await redis.setex(pendingKey, 900, JSON.stringify({
+            email,
+            passwordHash: hashedPassword,
+            displayName: name
+        }));
 
-        const user = result.rows[0];
+        // Gửi email chứa link kích hoạt (chạy bất đồng bộ nền để tránh block HTTP response)
+        sendVerificationLinkEmail(email, token);
 
-        // Generate token
-        const accessToken = generateAccessToken(user.id);
-        const refreshToken = generateRefreshToken(user.id);
-
-        // Save refresh token to DB
-        const expiry = getRefreshTokenExpiry(7);
-
-        await pool.query(
-            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
-            [user.id, refreshToken, expiry]
-        );
-
-        return res.status(201).json({
+        return res.status(200).json({
             success: true,
-            user,
-            token: { accessToken, refreshToken }
-        })
+            message: "Một liên kết xác thực đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư để kích hoạt tài khoản."
+        });
 
     } catch (error) {
-        console.error("Error in register controller");
-        res.status(400).json({ success: false, message: error.message });
+        console.error("❌ Lỗi trong controller register:", error);
+        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi xử lý đăng ký." });
     }
-
-    console.log("Register route");
-}
+};
 
 export const login = async (req, res) => {
     const { email, password } = req.body;
@@ -314,8 +299,8 @@ export const forgotPassword = async (req, res) => {
         // Lưu vào Redis, thời gian hết hạn là 1 giờ (3600s)
         await redis.setex(`reset-token:${token}`, 3600, JSON.stringify({ userId: user.id, email: user.email }));
 
-        // Gửi email
-        await sendResetPasswordEmail(user.email, token);
+        // Gửi email (chạy bất đồng bộ nền để tránh block HTTP response)
+        sendResetPasswordEmail(user.email, token);
 
         return res.status(200).json({
             success: true,
@@ -468,5 +453,85 @@ export const googleLogin = async (req, res) => {
     } catch (error) {
         console.error("❌ Lỗi trong controller googleLogin:", error);
         return res.status(500).json({ success: false, message: "Lỗi máy chủ khi xử lý đăng nhập Google." });
+    }
+};
+
+export const verifyEmail = async (req, res) => {
+    const { token } = req.body;
+
+    try {
+        if (!token) {
+            return res.status(400).json({ success: false, message: "Token xác thực là bắt buộc." });
+        }
+
+        const pendingKey = `pending-register-token:${token}`;
+        const dataStr = await redis.get(pendingKey);
+        if (!dataStr) {
+            return res.status(400).json({
+                success: false,
+                message: "Liên kết kích hoạt đã hết hạn hoặc không hợp lệ. Vui lòng đăng ký lại."
+            });
+        }
+
+        const { email, passwordHash, displayName } = JSON.parse(dataStr);
+
+        // Kiểm tra email trùng lặp một lần nữa trong Postgres (tránh race conditions)
+        const userAlreadyExists = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        if (userAlreadyExists.rows.length > 0) {
+            await redis.del(pendingKey);
+            return res.status(400).json({ success: false, message: "Tài khoản với Email này đã được đăng ký và kích hoạt trước đó." });
+        }
+
+        // Tạo tài khoản chính thức vào Postgres
+        const insertQuery = `
+            INSERT INTO users (email, password_hash, display_name)
+            VALUES ($1, $2, $3)
+            RETURNING id, email, display_name as "displayName", bio, avatar_url as "avatarUrl", cover_url as "coverUrl"
+        `;
+        const insertRes = await pool.query(insertQuery, [email, passwordHash, displayName]);
+        const dbUser = insertRes.rows[0];
+
+        // Xóa thông tin tạm trong Redis
+        await redis.del(pendingKey);
+
+        // Tạo JWT Access/Refresh tokens
+        const accessToken = generateAccessToken(dbUser.id);
+        const refreshToken = generateRefreshToken(dbUser.id);
+
+        // Cập nhật last_login
+        const nowLogin = new Date();
+        await pool.query(
+            "UPDATE users SET last_login = $1, updated_at = $1 WHERE id = $2",
+            [nowLogin, dbUser.id]
+        );
+
+        // Lưu Refresh Token vào DB
+        const expiry = getRefreshTokenExpiry(7);
+        await pool.query(
+            "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
+            [dbUser.id, refreshToken, expiry]
+        );
+
+        const user = {
+            id: dbUser.id,
+            email: dbUser.email,
+            displayName: dbUser.displayName,
+            avatarUrl: dbUser.avatarUrl,
+            bio: dbUser.bio,
+            coverUrl: dbUser.coverUrl
+        };
+
+        return res.status(201).json({
+            success: true,
+            user,
+            tokens: {
+                accessToken,
+                refreshToken
+            }
+        });
+
+    } catch (error) {
+        console.error("❌ Lỗi trong controller verifyEmail:", error);
+        return res.status(500).json({ success: false, message: "Lỗi máy chủ khi xác thực email kích hoạt." });
     }
 };;
