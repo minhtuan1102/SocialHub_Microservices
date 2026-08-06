@@ -1,16 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import MaterialIcon from "../components/MaterialIcon";
 
 const Login = () => {
-    const { login } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleGoogleCallback = async (response) => {
+        setError("");
+        setIsLoading(true);
+        const result = await loginWithGoogle(response.credential);
+        setIsLoading(false);
+
+        if (result.success) {
+            navigate("/");
+        } else {
+            setError(result.message);
+        }
+    };
+
+    useEffect(() => {
+        /* global google */
+        if (window.google) {
+            google.accounts.id.initialize({
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "1032514809228-example.apps.googleusercontent.com",
+                callback: handleGoogleCallback
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-signin-btn"),
+                { theme: "outline", size: "large", width: "100%" }
+            );
+        }
+    }, [loginWithGoogle, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -99,6 +126,21 @@ const Login = () => {
                         )}
                     </button>
                 </form>
+
+                {/* Dấu ngăn cách */}
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white px-2 text-slate-400">Hoặc tiếp tục với</span>
+                    </div>
+                </div>
+
+                {/* Nút đăng nhập Google */}
+                <div className="w-full flex justify-center select-none">
+                    <div id="google-signin-btn" className="w-full"></div>
+                </div>
 
                 <div className="mt-8 text-center text-on-surface-variant text-sm">
                     Chưa có tài khoản?{" "}

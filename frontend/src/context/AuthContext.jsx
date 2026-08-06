@@ -81,6 +81,26 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Hàm xử lý Đăng nhập/Đăng ký bằng Google Token
+    const loginWithGoogle = async (idToken) => {
+        try {
+            const res = await api.post("/auth/google", { idToken });
+            if (res.data && res.data.success) {
+                const { accessToken, refreshToken } = res.data.tokens;
+                localStorage.setItem("accessToken", accessToken);
+                localStorage.setItem("refreshToken", refreshToken);
+                setUser(res.data.user);
+                setIsAuthenticated(true);
+                return { success: true };
+            }
+        } catch (err) {
+            return {
+                success: false,
+                message: err.response?.data?.message || "Đăng nhập Google thất bại!",
+            };
+        }
+    };
+
     // Hàm xử lý Đăng xuất
     const logout = async () => {
 
@@ -99,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, setUser, isAuthenticated, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, setUser, isAuthenticated, loading, login, register, loginWithGoogle, logout }}>
             {children}
         </AuthContext.Provider>
     );
