@@ -13,12 +13,14 @@ import CreateGroupModal from "../components/chat/CreateGroupModal";
 import MaterialIcon from "../components/MaterialIcon";
 import VoiceMessagePlayer from "../components/chat/VoiceMessagePlayer";
 import VoiceRecorder from "../components/chat/VoiceRecorder";
+import { Sparkles } from "lucide-react";
 
 const formatLastMessagePreview = (lastMsg) => {
     if (!lastMsg) return "Chưa có tin nhắn...";
     if (lastMsg.type === "image") return "[Đã gửi 1 hình ảnh 📷]";
     if (lastMsg.type === "video") return "[Đã gửi 1 video 🎥]";
     if (lastMsg.type === "audio") return "[Đã gửi 1 tin nhắn thoại 🎤]";
+    if (lastMsg.type === "story_reply") return "[Đã trả lời tin 24h 💫]";
     const content = lastMsg.content || "";
     if (content.trim().startsWith("{") && content.includes('"postId"')) {
         try {
@@ -738,6 +740,34 @@ const Messages = () => {
                                                     <VoiceMessagePlayer src={msg.mediaUrl} mediaId={msg.mediaId} durationProp={!isNaN(parseInt(msg.content)) ? parseInt(msg.content) : 0} isMe={isMe} />
                                                 ) : msg.type === "share" ? (
                                                     <RenderShareMessage msgContent={msg.content} isMe={isMe} onNavigate={navigate} />
+                                                ) : msg.type === "story_reply" ? (
+                                                    <div className={`flex flex-col space-y-1.5 max-w-xs sm:max-w-sm ${isMe ? "items-end" : "items-start"}`}>
+                                                        <div className="flex items-center space-x-2.5 p-2 rounded-2xl bg-gradient-to-r from-violet-600/10 via-rose-500/10 to-amber-500/10 border border-violet-500/30 backdrop-blur-md">
+                                                            {msg.metadata?.storyMediaUrl && (
+                                                                <img
+                                                                    src={msg.metadata.storyMediaUrl}
+                                                                    alt="Story preview"
+                                                                    className="w-12 h-14 rounded-xl object-cover border border-white/20 shadow-sm"
+                                                                />
+                                                            )}
+                                                            <div className="overflow-hidden text-left">
+                                                                <span className="text-xs font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 uppercase tracking-wider">
+                                                                    <Sparkles className="w-3.5 h-3.5" /> Trả lời tin 24h
+                                                                </span>
+                                                                {msg.metadata?.storyCaption && (
+                                                                    <p className="text-xs text-slate-600 dark:text-slate-300 italic truncate mt-0.5">
+                                                                        "{msg.metadata.storyCaption}"
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words shadow-sm ${isMe
+                                                            ? "bg-blue-600 text-white rounded-br-none"
+                                                            : "bg-white text-slate-800 rounded-bl-none border border-slate-200"
+                                                            }`}>
+                                                            {msg.content}
+                                                        </div>
+                                                    </div>
                                                 ) : (
                                                     <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words shadow-sm ${isMe
                                                         ? "bg-blue-600 text-white rounded-br-none"

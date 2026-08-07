@@ -52,6 +52,7 @@ const mapSocialGroupToPostService = (req, res) => {
 router.use('/posts', protectRoute, mapToPostService);
 router.use('/feed', protectRoute, mapToPostService);
 router.use('/reels', protectRoute, mapToPostService);
+router.use('/stories', protectRoute, mapToPostService);
 router.use('/social-groups', protectRoute, mapSocialGroupToPostService);
 
 // --- friend-service routes ---

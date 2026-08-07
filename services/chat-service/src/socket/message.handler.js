@@ -11,7 +11,7 @@ export default (io, socket) => {
   // 1. Send Message
   socket.on('message:send', async (payload) => {
     try {
-      const { conversationId, content, type = 'text', mediaId } = payload;
+      const { conversationId, content, type = 'text', mediaId, metadata } = payload;
       const userId = socket.userId;
 
       console.log(`📡 [SOCKET] Event message:send from user=${userId} (${socket.displayName}) in conversation=${conversationId}, type=${type}, content="${content ? content.substring(0, 50) : ''}"`);
@@ -46,16 +46,17 @@ export default (io, socket) => {
         senderId: userId,
         senderName: socket.displayName,
         senderAvatar: socket.avatarUrl,
-        content: content || (type === 'audio' ? 'Đã gửi một tin nhắn thoại 🎤' : 'Sent an image'),
+        content: content || (type === 'audio' ? 'Đã gửi một tin nhắn thoại 🎤' : type === 'story_reply' ? 'Đã trả lời tin của bạn' : 'Sent an image'),
         type,
         mediaId,
         mediaUrl,
+        metadata: metadata || null,
         readBy: [{ userId, readAt: new Date() }] // Sender has automatically read it
       });
 
       // Update Conversation's lastMessage for list previews
       conversation.lastMessage = {
-        content: type === 'image' ? 'Sent an image' : type === 'audio' ? 'Đã gửi một tin nhắn thoại 🎤' : type === 'share' ? 'Đã chia sẻ một bài viết' : content.substring(0, 100),
+        content: type === 'image' ? 'Sent an image' : type === 'audio' ? 'Đã gửi một tin nhắn thoại 🎤' : type === 'share' ? 'Đã chia sẻ một bài viết' : type === 'story_reply' ? 'Đã trả lời tin của bạn' : content.substring(0, 100),
         senderId: userId,
         senderName: socket.displayName,
         createdAt: message.createdAt

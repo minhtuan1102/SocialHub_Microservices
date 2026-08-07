@@ -35,7 +35,7 @@ const MessageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['text', 'image', 'share', 'audio'],
+    enum: ['text', 'image', 'share', 'audio', 'story_reply'],
     default: 'text'
   },
   mediaId: {
@@ -44,6 +44,10 @@ const MessageSchema = new mongoose.Schema({
   },
   mediaUrl: {
     type: String, // Presigned URL, nullable
+    default: null
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
     default: null
   },
   readBy: [ReadBySchema]

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../services/api";
 import CreatePost from "../components/CreatePost";
 import PostCard from "../components/PostCard";
+import StoryBar from "../components/stories/StoryBar";
 import { useAuth } from "../context/AuthContext";
 import MaterialIcon from "../components/MaterialIcon";
 
@@ -63,6 +64,9 @@ const Feed = () => {
                 </h1>
                 <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">Cập nhật những hoạt động mới nhất từ bạn bè của bạn.</p>
             </div>
+
+            {/* Thanh Story 24h */}
+            <StoryBar />
 
             {/* Hộp đăng bài */}
             <CreatePost onPostCreated={handlePostCreated} />

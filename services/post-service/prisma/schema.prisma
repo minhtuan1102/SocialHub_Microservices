@@ -150,4 +150,37 @@ model GroupMember {
   @@map("group_members")
 }
 
+model Story {
+  id          String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  author_id   String      @db.Uuid
+  media_id    String      @db.VarChar(255)
+  media_type  String      @default("image") @db.VarChar(10)
+  caption     String?
+  view_count  Int         @default(0)
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  expires_at  DateTime    @db.Timestamptz(6)
+
+  // Relations
+  views       StoryView[]
+
+  @@index([author_id], map: "idx_stories_author_id")
+  @@index([expires_at], map: "idx_stories_expires_at")
+  @@map("stories")
+}
+
+model StoryView {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  story_id   String   @db.Uuid
+  user_id    String   @db.Uuid
+  viewed_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  story      Story    @relation(fields: [story_id], references: [id], onDelete: Cascade)
+
+  @@unique([story_id, user_id])
+  @@index([story_id], map: "idx_storyviews_story_id")
+  @@map("story_views")
+}
+
+
 

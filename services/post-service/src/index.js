@@ -11,6 +11,8 @@ import { initDatabase } from './config/db.js';
 import postRoutes from './routes/post.routes.js';
 import reelRoutes from './routes/reel.routes.js';
 import groupRoutes from './routes/group.routes.js';
+import storyRoutes from './routes/story.routes.js';
+import prisma from './config/db.js';
 
 const app = express();
 
@@ -41,6 +43,7 @@ app.use((req, res, next) => {
 app.use('/', postRoutes);
 app.use('/', reelRoutes);
 app.use('/', groupRoutes);
+app.use('/', storyRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
@@ -59,4 +62,20 @@ initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Post Service is running on port ${PORT}`);
   });
+
+  // Cleanup story đã hết hạn mỗi 1 giờ
+  const CLEANUP_INTERVAL = 60 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      const result = await prisma.story.deleteMany({
+        where: { expires_at: { lt: new Date() } }
+      });
+      if (result.count > 0) {
+        console.log(`🧹 Cleaned up ${result.count} expired stories`);
+      }
+    } catch (err) {
+      console.error('❌ Story cleanup error:', err.message);
+    }
+  }, CLEANUP_INTERVAL);
 });
+

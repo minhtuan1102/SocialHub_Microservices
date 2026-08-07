@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader, Phone, Video, X, Image, Mic, Send } from "lucide-react";
+import { Loader, Phone, Video, X, Image, Mic, Send, Sparkles } from "lucide-react";
 import api from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import MaterialIcon from "./MaterialIcon";
@@ -531,6 +531,35 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                                         <VoiceMessagePlayer src={msg.mediaUrl} mediaId={msg.mediaId} durationProp={!isNaN(parseInt(msg.content)) ? parseInt(msg.content) : 0} isMe={isMe} />
                                     ) : msg.type === "share" ? (
                                         <RenderShareMessage msgContent={msg.content} isMe={isMe} onNavigate={navigate} />
+                                    ) : msg.type === "story_reply" ? (
+                                        <div className={`flex flex-col space-y-1 max-w-[220px] ${isMe ? "items-end" : "items-start"}`}>
+                                            <div className="flex items-center space-x-2 p-1.5 rounded-xl bg-violet-500/10 border border-violet-500/30">
+                                                {msg.metadata?.storyMediaUrl && (
+                                                    <img
+                                                        src={msg.metadata.storyMediaUrl}
+                                                        alt="Story preview"
+                                                        className="w-10 h-12 rounded-lg object-cover border border-white/20"
+                                                    />
+                                                )}
+                                                <div className="overflow-hidden text-left">
+                                                    <span className="text-[10px] font-bold text-violet-500 flex items-center gap-1 uppercase">
+                                                        <Sparkles className="w-3 h-3" /> Trả lời tin
+                                                    </span>
+                                                    {msg.metadata?.storyCaption && (
+                                                        <p className="text-[10px] text-on-surface-variant italic truncate">
+                                                            "{msg.metadata.storyCaption}"
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className={`px-3 py-1.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
+                                                isMe
+                                                    ? "bg-primary text-on-primary rounded-br-none"
+                                                    : "bg-surface-container-high dark:bg-surface-container-highest text-on-surface rounded-bl-none border border-outline-variant/10"
+                                            }`}>
+                                                {msg.content}
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className={`px-3 py-1.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm ${
                                             isMe
