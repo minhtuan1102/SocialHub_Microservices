@@ -32,6 +32,9 @@ const StoryViewer = ({
 
   const { chatSocket, setToast } = useSocket();
 
+  // State floating reaction emojis (phải khai báo trước mọi return sớm)
+  const [floatingReactions, setFloatingReactions] = useState([]);
+
   const currentGroup = storyGroups[groupIndex];
   const currentStory = currentGroup?.stories?.[storyIndex];
   const isOwner = currentGroup?.author?.id === currentUserId;
@@ -53,9 +56,9 @@ const StoryViewer = ({
     setReplySentSuccess(false);
   }, [groupIndex, storyIndex]);
 
-  // Progress Bar timer (5 giây mỗi story ảnh)
+  // Progress Bar timer (5 giây mỗi story ảnh, video chạy theo độ dài thực tế của video)
   useEffect(() => {
-    if (isPaused || showViewers || !currentStory) return;
+    if (isPaused || showViewers || !currentStory || currentStory.media_type === "video") return;
 
     const duration = 5000; // 5s
     const interval = 50; // update mỗi 50ms
@@ -147,7 +150,7 @@ const StoryViewer = ({
         participantId: currentGroup.author.id,
       });
 
-      const conversationId = convRes.data?.conversation?.id;
+      const conversationId = convRes.data?.data?.id || convRes.data?.conversation?.id || convRes.data?.id;
       if (!conversationId) {
         throw new Error("Không khởi tạo được hội thoại!");
       }
@@ -182,6 +185,52 @@ const StoryViewer = ({
       alert("Không thể gửi tin nhắn trả lời!");
     } finally {
       setIsSendingReply(false);
+    }
+  };
+
+  // Xử lý bắn Emoji Reaction
+  const handleSendEmojiReaction = async (emoji) => {
+    // 1. Hiệu ứng Emoji bay lên màn hình
+    const newReaction = {
+      id: Date.now() + Math.random(),
+      emoji,
+      left: `${20 + Math.random() * 60}%`,
+    };
+    setFloatingReactions((prev) => [...prev, newReaction]);
+
+    // Tự động dọn dẹp sau 1.5s
+    setTimeout(() => {
+      setFloatingReactions((prev) => prev.filter((r) => r.id !== newReaction.id));
+    }, 1500);
+
+    // 2. Gửi tin nhắn reaction qua socket/API
+    if (!currentGroup?.author?.id) return;
+    try {
+      const convRes = await api.post("/conversations", {
+        participantId: currentGroup.author.id,
+      });
+      const conversationId = convRes.data?.data?.id || convRes.data?.conversation?.id || convRes.data?.id;
+      if (!conversationId) return;
+
+      const payload = {
+        conversationId,
+        content: emoji,
+        type: "story_reply",
+        metadata: {
+          storyId: currentStory.id,
+          storyMediaUrl: getMediaFileUrl(currentStory.media_id),
+          storyCaption: currentStory.caption,
+          isReaction: true,
+        },
+      };
+
+      if (chatSocket && chatSocket.connected) {
+        chatSocket.emit("message:send", payload);
+      } else {
+        await api.post(`/conversations/${conversationId}/messages`, payload);
+      }
+    } catch (err) {
+      console.error("❌ Lỗi gửi reaction:", err);
     }
   };
 
@@ -263,6 +312,13 @@ const StoryViewer = ({
               autoPlay={true}
               loop={false}
               className="w-full h-full object-contain"
+              onTimeUpdate={(e) => {
+                const v = e.target;
+                if (v && v.duration && !isNaN(v.duration) && v.duration > 0) {
+                  setProgress((v.currentTime / v.duration) * 100);
+                }
+              }}
+              onEnded={() => handleNextStory()}
             />
           ) : (
             <img
@@ -272,9 +328,22 @@ const StoryViewer = ({
             />
           )}
 
+          {/* Floating Emoji Reaction Overlay */}
+          <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+            {floatingReactions.map((r) => (
+              <span
+                key={r.id}
+                className="absolute bottom-20 text-4xl animate-floatUp drop-shadow-lg"
+                style={{ left: r.left }}
+              >
+                {r.emoji}
+              </span>
+            ))}
+          </div>
+
           {/* Caption text overlay */}
           {currentStory.caption && (
-            <div className="absolute bottom-16 inset-x-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-center z-20">
+            <div className="absolute bottom-24 inset-x-0 p-4 bg-gradient-to-t from-black/80 via-black/30 to-transparent text-center z-20">
               <p className="text-white text-sm sm:text-base font-medium drop-shadow-md px-4 py-1.5 inline-block bg-black/40 backdrop-blur-md rounded-2xl border border-white/10">
                 {currentStory.caption}
               </p>
@@ -284,11 +353,11 @@ const StoryViewer = ({
           {/* Area cho click qua trái / qua phải */}
           <div
             onClick={handlePrevStory}
-            className="absolute left-0 top-16 bottom-16 w-1/3 z-10 cursor-pointer"
+            className="absolute left-0 top-16 bottom-24 w-1/3 z-10 cursor-pointer"
           />
           <div
             onClick={handleNextStory}
-            className="absolute right-0 top-16 bottom-16 w-1/3 z-10 cursor-pointer"
+            className="absolute right-0 top-16 bottom-24 w-1/3 z-10 cursor-pointer"
           />
         </div>
 
@@ -311,8 +380,8 @@ const StoryViewer = ({
           </button>
         ) : null}
 
-        {/* Footer Area: Viewers list nút (dành cho owner) HOẶC Reply input (dành cho viewer) */}
-        <div className="z-30 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent border-t border-white/5">
+        {/* Footer Area: Viewers list nút (dành cho owner) HOẶC Reply input + Reaction Emojis (dành cho viewer) */}
+        <div className="z-30 p-3 sm:p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent space-y-2.5">
           {isOwner ? (
             <div className="flex items-center justify-between px-2">
               <button
@@ -326,28 +395,46 @@ const StoryViewer = ({
               <span className="text-[11px] text-slate-400">Tin của bạn</span>
             </div>
           ) : (
-            <form onSubmit={handleSendReply} className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={replyText}
-                onFocus={() => setIsPaused(true)}
-                onBlur={() => setIsPaused(false)}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder={`Trả lời ${currentGroup.author.displayName}...`}
-                className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-full text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 transition backdrop-blur-md"
-              />
-              <button
-                type="submit"
-                disabled={!replyText.trim() || isSendingReply}
-                className="p-2.5 bg-primary hover:bg-primary/90 disabled:opacity-40 text-on-primary rounded-full transition cursor-pointer shadow-lg"
-              >
-                {isSendingReply ? (
-                  <Loader className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </button>
-            </form>
+            <div className="space-y-2">
+              {/* Thanh Icon Bày tỏ cảm xúc (Emoji Reactions Bar) */}
+              <div className="flex items-center justify-around px-1 py-1">
+                {["❤️", "😂", "😮", "😢", "🔥", "👏"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleSendEmojiReaction(emoji)}
+                    className="text-2xl hover:scale-125 transition-transform duration-150 cursor-pointer active:scale-95 p-1 hover:bg-white/10 rounded-full"
+                    title={`Bày tỏ cảm xúc ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
+              {/* Ô Nhập tin nhắn trả lời */}
+              <form onSubmit={handleSendReply} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={replyText}
+                  onFocus={() => setIsPaused(true)}
+                  onBlur={() => setIsPaused(false)}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder={`Trả lời ${currentGroup.author.displayName}...`}
+                  className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-full text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/50 transition backdrop-blur-md"
+                />
+                <button
+                  type="submit"
+                  disabled={!replyText.trim() || isSendingReply}
+                  className="p-2.5 bg-primary hover:bg-primary/90 disabled:opacity-40 text-on-primary rounded-full transition cursor-pointer shadow-lg"
+                >
+                  {isSendingReply ? (
+                    <Loader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </form>
+            </div>
           )}
 
           {replySentSuccess && (

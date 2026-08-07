@@ -34,6 +34,7 @@ export const hlsService = {
       console.log(`[HLS] Starting transcode for mediaId=${mediaId}...`);
 
       await new Promise((resolve, reject) => {
+        const segmentPattern = path.join(tempDir, 'segment_%03d.ts');
         ffmpeg(inputPath)
           .outputOptions([
             '-c:v libx264',
@@ -51,7 +52,7 @@ export const hlsService = {
             '-hls_playlist_type vod',
             '-hls_flags independent_segments',
             '-max_muxing_queue_size 1024',
-            '-hls_segment_filename', path.join(tempDir, 'segment_%03d.ts')
+            `-hls_segment_filename ${segmentPattern}`
           ])
           .output(outputPlaylist)
           .on('end', () => {

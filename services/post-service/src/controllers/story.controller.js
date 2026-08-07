@@ -28,7 +28,9 @@ export const createStory = async (req, res) => {
     }
 
     const createdAt = new Date();
-    const expiresAt = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000); // +24 hours
+    // Tin (Story) không có thời hạn hết hạn - user có thể tự xóa khi muốn
+    // expires_at được set xa vào tương lai để không bao giờ tự động ẩn
+    const expiresAt = new Date('2099-12-31T23:59:59.000Z');
 
     const story = await prisma.story.create({
       data: {
@@ -71,11 +73,10 @@ export const getFeedStories = async (req, res) => {
       console.error('❌ Error fetching friends for stories feed:', err.message);
     }
 
-    // Lấy tất cả stories chưa hết hạn của mình và bạn bè
+    // Lấy tất cả stories (không có thời hạn hết hạn) của mình và bạn bè
     const stories = await prisma.story.findMany({
       where: {
-        author_id: { in: allowedAuthorIds },
-        expires_at: { gt: new Date() }
+        author_id: { in: allowedAuthorIds }
       },
       include: {
         views: {
@@ -137,8 +138,7 @@ export const getMyStories = async (req, res) => {
 
     const stories = await prisma.story.findMany({
       where: {
-        author_id: currentUserId,
-        expires_at: { gt: new Date() }
+        author_id: currentUserId
       },
       orderBy: { created_at: 'desc' }
     });

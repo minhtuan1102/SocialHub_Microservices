@@ -299,3 +299,19 @@ body {
   background: color-mix(in srgb, var(--color-surface-container-low) 40%, transparent);
   border-color: color-mix(in srgb, white 8%, transparent);
 }
+
+/* Story Reaction Floating Emoji Animation */
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-260px) scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-floatUp {
+  animation: floatUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

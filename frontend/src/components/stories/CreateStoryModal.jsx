@@ -129,7 +129,7 @@ const CreateStoryModal = ({ onClose, onUploadSuccess }) => {
         <div className="flex items-center justify-between border-b border-outline-variant/10 pb-2.5 shrink-0 mb-3">
           <h3 className="text-sm font-bold text-on-surface dark:text-white uppercase tracking-wider flex items-center space-x-2">
             <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-            <span>Tạo tin 24h mới</span>
+            <span>Tạo tin mới</span>
           </h3>
           <button
             onClick={onClose}
@@ -159,7 +159,7 @@ const CreateStoryModal = ({ onClose, onUploadSuccess }) => {
                     Kéo và thả ảnh hoặc video vào đây
                   </p>
                   <p className="text-[11px] text-on-surface-variant dark:text-slate-400 mt-0.5">
-                    Hỗ trợ ảnh PNG, JPG, GIF hoặc video MP4 (tối đa 24h)
+                    Hỗ trợ ảnh PNG, JPG, GIF hoặc video MP4
                   </p>
                 </div>
                 <input

@@ -20,7 +20,7 @@ const formatLastMessagePreview = (lastMsg) => {
     if (lastMsg.type === "image") return "[Đã gửi 1 hình ảnh 📷]";
     if (lastMsg.type === "video") return "[Đã gửi 1 video 🎥]";
     if (lastMsg.type === "audio") return "[Đã gửi 1 tin nhắn thoại 🎤]";
-    if (lastMsg.type === "story_reply") return "[Đã trả lời tin 24h 💫]";
+    if (lastMsg.type === "story_reply") return "[Đã trả lời Tin 💫]";
     const content = lastMsg.content || "";
     if (content.trim().startsWith("{") && content.includes('"postId"')) {
         try {
@@ -752,7 +752,7 @@ const Messages = () => {
                                                             )}
                                                             <div className="overflow-hidden text-left">
                                                                 <span className="text-xs font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 uppercase tracking-wider">
-                                                                    <Sparkles className="w-3.5 h-3.5" /> Trả lời tin 24h
+                                                                    <Sparkles className="w-3.5 h-3.5" /> Trả lời Tin
                                                                 </span>
                                                                 {msg.metadata?.storyCaption && (
                                                                     <p className="text-xs text-slate-600 dark:text-slate-300 italic truncate mt-0.5">

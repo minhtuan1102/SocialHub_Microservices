@@ -58,12 +58,9 @@ const StoryBar = () => {
         <div className="flex items-center space-x-2">
           <Sparkles className="w-5 h-5 text-primary animate-pulse" />
           <h2 className="font-title-md text-base font-bold text-on-surface tracking-tight">
-            Tin 24h
+            Tin
           </h2>
         </div>
-        <span className="text-xs text-on-surface-variant font-medium">
-          Tự biến mất sau 24 giờ
-        </span>
       </div>
 
       {/* Horizontal Story List */}
@@ -97,7 +94,7 @@ const StoryBar = () => {
               <Plus className="w-4 h-4 stroke-[3]" />
             </button>
           </div>
-          <span className="text-xs font-semibold text-on-surface text-center truncate max-w-[72px]">
+          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-[72px]">
             {myStoryGroup ? "Tin của bạn" : "Tạo tin"}
           </span>
         </div>
@@ -139,7 +136,7 @@ const StoryBar = () => {
                       className="w-full h-full rounded-full object-cover border-2 border-surface dark:border-slate-900"
                     />
                   </div>
-                  <span className="text-xs font-medium text-on-surface dark:text-slate-200 text-center truncate max-w-[72px]">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-[72px]">
                     {group.author?.displayName}
                   </span>
                 </div>

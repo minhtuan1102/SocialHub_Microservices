@@ -542,9 +542,9 @@ const ChatBox = ({ conversation, onClose, currentUserId }) => {
                                                     />
                                                 )}
                                                 <div className="overflow-hidden text-left">
-                                                    <span className="text-[10px] font-bold text-violet-500 flex items-center gap-1 uppercase">
-                                                        <Sparkles className="w-3 h-3" /> Trả lời tin
-                                                    </span>
+                                                        <span className="text-[10px] font-bold text-violet-500 flex items-center gap-1 uppercase">
+                                                            <Sparkles className="w-3 h-3" /> Trả lời Tin
+                                                        </span>
                                                     {msg.metadata?.storyCaption && (
                                                         <p className="text-[10px] text-on-surface-variant italic truncate">
                                                             "{msg.metadata.storyCaption}"
