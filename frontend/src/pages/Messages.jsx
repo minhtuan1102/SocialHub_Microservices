@@ -13,7 +13,7 @@ import CreateGroupModal from "../components/chat/CreateGroupModal";
 import MaterialIcon from "../components/MaterialIcon";
 import VoiceMessagePlayer from "../components/chat/VoiceMessagePlayer";
 import VoiceRecorder from "../components/chat/VoiceRecorder";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Phone, Video, Users } from "lucide-react";
 
 const formatLastMessagePreview = (lastMsg) => {
     if (!lastMsg) return "Chưa có tin nhắn...";
