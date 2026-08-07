@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import MaterialIcon from "./MaterialIcon";
 import api from "../services/api";
+import { Users, Maximize2, Minimize2, Mic, MicOff, PhoneOff, Video, VideoOff, SwitchCamera } from "lucide-react";
 
 const ICE_SERVERS = {
     iceServers: [
